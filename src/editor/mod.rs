@@ -1,2 +1,2 @@
-mod cursor;
+pub mod cursor;
 pub mod session;

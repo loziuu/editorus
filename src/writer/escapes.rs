@@ -9,7 +9,7 @@ pub enum EscapeSequence {
 }
 
 impl EscapeSequence {
-    // TODO: Use result :)
+
     pub fn execute(self, stdout: &mut Stdout) -> Result<(), std::io::Error> {
         stdout.write(&[27])?;
         match self {

@@ -1,3 +1,16 @@
 # Features to be added
 - "Dirty" on ERow level,
 - Handle unicode
+- Don't allow cursor to go out of bounds in ERow
+- Save file
+- Add commands
+- Add different modes (at least motion - edit)?
+- Undo
+- Redo
+- On moving cursor to left - move to last position in previous line
+- Breaking line on rows with more characters than cols 
+- Formatting?
+- Styles
+- Find
+- Selection
+- Viewports

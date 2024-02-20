@@ -10,8 +10,18 @@ impl ERow {
         Self { data }
     }
 
+    fn empty(allocated: usize) -> Self {
+        Self {
+            data: vec![0; allocated],
+        }
+    }
+
     pub fn data(&self) -> &[u8] {
         &self.data
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
@@ -49,52 +59,77 @@ impl Session {
         &self.cursor
     }
 
-    pub(crate) fn cursor_up(&mut self) {
+    pub fn cursor_up(&mut self) {
         self.cursor.up();
+        if self.cursor.x > self.rows[self.cursor.y - 1].len() {
+            self.cursor.x = self.rows[self.cursor.y - 1].len();
+        }
     }
 
-    pub(crate) fn cursor_down(&mut self) {
-        self.cursor.down();
+    pub fn cursor_down(&mut self) {
+        if self.cursor.y != self.rows.len() {
+            self.cursor.down();
+        }
+        if self.cursor.x > self.rows[self.cursor.y - 1].len() {
+            self.cursor.x = self.rows[self.cursor.y - 1].len();
+        }
     }
 
-    pub(crate) fn cursor_left(&mut self)  {
+    pub fn cursor_left(&mut self) {
+        self.mark_dirty();
         self.cursor.left();
     }
 
-    pub(crate) fn cursor_right(&mut self) {
-        self.cursor.right();
+    pub fn cursor_right(&mut self) {
+        if self.cursor.x < self.rows[self.cursor.y - 1].len() {
+            self.cursor.right();
+        }
     }
 
-    pub(crate) fn mark_clean(&mut self) {
+    pub fn mark_clean(&mut self) {
         self.dirty = false;
     }
 
-    pub(crate) fn is_dirty(&self) -> bool {
+    pub fn is_dirty(&self) -> bool {
         self.dirty
     }
 
-    pub(crate) fn mark_dirty(&mut self) {
+    pub fn mark_dirty(&mut self) {
         self.dirty = true;
     }
 
-    pub(crate) fn insert(&mut self, data: &[u8])  {
-        let row = &mut self.rows[self.cursor.y-1];
-        let mut new_row = vec![]; 
-        new_row.extend_from_slice(&row.data[..self.cursor.x-1]);
-        new_row.extend_from_slice(data);
-        new_row.extend_from_slice(&row.data[self.cursor.x-1..]);
-        row.data = new_row.to_vec(); 
-        self.cursor.right();
+    // TODO: Refactor maybe to use some commands?
+    // TODO: Make it work at the end of the line
+    pub fn insert(&mut self, data: &[u8]) {
+        let row = &mut self.rows[self.cursor.y - 1];
+
+        for bytes in data {
+            row.data.insert(self.cursor.x - 1, *bytes);
+            self.cursor.right();
+        }
+
         self.mark_dirty();
     }
 
-    pub(crate) fn backspace(&mut self) {
+    // TODO: Refactor maybe to use some commands?
+    pub fn backspace(&mut self) {
+        if self.cursor.x <= 1 {
+            return;
+        }
         self.cursor.left();
-        let row = &mut self.rows[self.cursor.y-1];
-        let mut new_row = vec![]; 
-        new_row.extend_from_slice(&row.data[..self.cursor.x-1]);
-        new_row.extend_from_slice(&row.data[self.cursor.x..]);
-        row.data = new_row.to_vec(); 
+        let row = &mut self.rows[self.cursor.y - 1];
+        row.data.remove(self.cursor.x - 1);
         self.mark_dirty();
+    }
+
+    pub fn new_line(&mut self) {
+        self.rows.insert(self.cursor.y, ERow::empty(0));
+        self.cursor_down();
+        self.cursor.x = 1;
+        self.mark_dirty();
+    }
+
+    pub fn total_bytes(&self) -> usize {
+        self.rows.iter().map(|it| it.data.capacity()).sum()
     }
 }

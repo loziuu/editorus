@@ -1,4 +1,4 @@
-pub(crate) struct ECursor {
+pub struct ECursor {
     pub x: usize,
     pub y: usize,
 }
@@ -13,7 +13,7 @@ impl ECursor {
     }
 
     pub(crate) fn left(&mut self) {
-        if self.x != 0 {
+        if self.x != 1 {
             self.x -= 1;
         }
     }
@@ -23,7 +23,7 @@ impl ECursor {
     }
 
     pub(crate) fn up(&mut self) {
-        if self.y != 0 {
+        if self.y != 1 {
             self.y -= 1;
         }
     }

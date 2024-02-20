@@ -1,11 +1,11 @@
 use crossterm::terminal;
-use editor::session::Session;
 use std::fs::File;
+use std::io::stdout;
 use std::io::{stdin, Read, Write};
-use std::io::{stdout, Stdout};
 
-pub(crate) mod editor;
-pub(crate) mod writer;
+use editorus::writer;
+
+use editorus::editor::session::Session;
 
 trait BytesCmp {
     fn bytes_eq(&self, bytes: &[u8]) -> bool;
@@ -34,17 +34,17 @@ fn main() -> std::io::Result<()> {
     let mut session = Session::open_file(file)?;
 
     writer::clear_screen();
+    writer::write(&mut session)?;
     loop {
-        writer::write(&mut session)?;
-
         let mut buf: [u8; 3] = [0; 3];
 
         if let Ok(size) = stdin.read(&mut buf) {
             if buf[0] == 13 {
-                // TODO: Implement new line
+                session.new_line();
+                // TOD Implement new line
             } else if buf[0] == 8 {
                 session.backspace();
-                return Ok(())
+                return Ok(());
             } else if buf[0] == 127 {
                 session.backspace();
             } else if buf[0] == 27 {
@@ -70,6 +70,7 @@ fn main() -> std::io::Result<()> {
                 session.insert(&buf[..size]);
                 session.mark_dirty();
             }
+            writer::write(&mut session)?;
         }
 
         stdout.flush()?;

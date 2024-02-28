@@ -1,3 +1,5 @@
+use log::info;
+
 use super::cursor::ECursor;
 use std::{fs::File, io::Read};
 
@@ -26,8 +28,8 @@ impl ERow {
 }
 
 pub struct Session {
-    file: Option<File>, // TODO: This may be optional tho!!!
-    rows: Vec<ERow>,
+    // Can it be actually outside?
+    data: Vec<ERow>,
     cursor: ECursor,
     dirty: bool,
 }
@@ -43,8 +45,7 @@ impl Session {
             .map(|row| ERow::new(row.to_vec()))
             .collect();
         let session = Session {
-            file: Some(file),
-            rows,
+            data: rows,
             cursor: ECursor::at_home(),
             dirty: true,
         };
@@ -52,7 +53,7 @@ impl Session {
     }
 
     pub fn rows(&self) -> &[ERow] {
-        self.rows.as_ref()
+        self.data.as_ref()
     }
 
     pub fn cursor(&self) -> &ECursor {
@@ -61,29 +62,39 @@ impl Session {
 
     pub fn cursor_up(&mut self) {
         self.cursor.up();
-        if self.cursor.x > self.rows[self.cursor.y - 1].len() {
-            self.cursor.x = self.rows[self.cursor.y - 1].len();
+        if self.cursor.x > self.data[self.cursor.y - 1].len() {
+            self.cursor.x = self.data[self.cursor.y - 1].len();
         }
     }
 
     pub fn cursor_down(&mut self) {
-        if self.cursor.y != self.rows.len() {
+        if self.cursor.y != self.data.len() {
             self.cursor.down();
         }
-        if self.cursor.x > self.rows[self.cursor.y - 1].len() {
-            self.cursor.x = self.rows[self.cursor.y - 1].len();
+        if self.cursor.x > self.data[self.cursor.y - 1].len() {
+            self.cursor.x = self.data[self.cursor.y - 1].len();
         }
     }
 
     pub fn cursor_left(&mut self) {
-        self.mark_dirty();
+        if self.cursor.x == 1 {
+            if self.cursor.y != 1 {
+                self.cursor.up();
+                self.cursor.x = self.data[self.cursor.y-1].len()+1; // (cursor.x = 1) == data[0] 
+            }
+        }
         self.cursor.left();
+        self.mark_dirty();
     }
 
     pub fn cursor_right(&mut self) {
-        if self.cursor.x < self.rows[self.cursor.y - 1].len() {
+        if self.cursor.x < self.data[self.cursor.y - 1].len() {
             self.cursor.right();
+        } else {
+            self.cursor.down();
+            self.cursor.move_to_line_beginning();
         }
+        self.mark_dirty();
     }
 
     pub fn mark_clean(&mut self) {
@@ -101,7 +112,7 @@ impl Session {
     // TODO: Refactor maybe to use some commands?
     // TODO: Make it work at the end of the line
     pub fn insert(&mut self, data: &[u8]) {
-        let row = &mut self.rows[self.cursor.y - 1];
+        let row = &mut self.data[self.cursor.y - 1];
 
         for bytes in data {
             row.data.insert(self.cursor.x - 1, *bytes);
@@ -113,23 +124,41 @@ impl Session {
 
     // TODO: Refactor maybe to use some commands?
     pub fn backspace(&mut self) {
-        if self.cursor.x <= 1 {
+        if self.cursor.x == 1 && self.cursor.y == 1 {
             return;
         }
-        self.cursor.left();
-        let row = &mut self.rows[self.cursor.y - 1];
-        row.data.remove(self.cursor.x - 1);
+        if self.cursor.at_start() {
+            let data = self.data[self.cursor.y - 1].data.clone();
+            self.data.remove(self.cursor.y - 1);
+            self.cursor_up();
+            self.data[self.cursor.y - 1]
+                .data
+                .extend_from_slice(data.as_slice());
+            self.cursor.x = self.data[self.cursor.y - 1].len() - data.len() + 1;
+        } else {
+            self.cursor.left();
+            let row = &mut self.data[self.cursor.y - 1];
+            row.data.remove(self.cursor.x - 1);
+        }
         self.mark_dirty();
     }
 
+    // Enter button, not 'o'
     pub fn new_line(&mut self) {
-        self.rows.insert(self.cursor.y, ERow::empty(0));
-        self.cursor_down();
-        self.cursor.x = 1;
-        self.mark_dirty();
-    }
+        let current_row = &self.data[self.cursor.y - 1];
 
-    pub fn total_bytes(&self) -> usize {
-        self.rows.iter().map(|it| it.data.capacity()).sum()
+        if self.cursor.x - 1 != current_row.data.len() {
+            let row = self.data.remove(self.cursor.y - 1);
+            let data = row.data.leak();
+            let x = self.cursor.x - 1;
+            self.data.insert(self.cursor.y-1, ERow::new(data[..x].to_vec()));
+            self.data.insert(self.cursor.y, ERow::new(data[x..].to_vec()));
+        } else {
+            self.data.insert(self.cursor.y, ERow::empty(0));
+        }
+
+        self.cursor.down();
+        self.cursor.move_to_line_beginning();
+        self.mark_dirty();
     }
 }

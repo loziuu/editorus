@@ -26,6 +26,7 @@ impl BytesCmp for [u8] {
 }
 
 fn main() -> std::io::Result<()> {
+    setup_logger();
     let mut stdout = stdout();
     let mut stdin = stdin();
     terminal::enable_raw_mode()?;
@@ -78,4 +79,20 @@ fn main() -> std::io::Result<()> {
 
     terminal::disable_raw_mode()?;
     Ok(())
+}
+
+// TODO: Tidy this shit up 
+fn setup_logger() {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {}] {}",
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(fern::log_file("output.log").unwrap())
+        .apply().unwrap()
 }

@@ -9,7 +9,6 @@ pub enum EscapeSequence {
 }
 
 impl EscapeSequence {
-
     pub fn execute(self, stdout: &mut Stdout) -> Result<(), std::io::Error> {
         stdout.write(&[27])?;
         match self {
@@ -25,15 +24,15 @@ impl EscapeSequence {
             EscapeSequence::ClearScreen => {
                 stdout.write("[2J".as_bytes())?;
                 Ok(())
-            },
+            }
             EscapeSequence::HideCursor => {
                 stdout.write("[?25l".as_bytes())?;
                 Ok(())
-            },
+            }
             EscapeSequence::ShowCursor => {
                 stdout.write("[?25h".as_bytes())?;
                 Ok(())
-            },
+            }
         }
     }
 }

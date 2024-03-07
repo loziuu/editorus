@@ -1,7 +1,8 @@
-use super::Node;
+use super::{leaf::Leaf, Node};
 
-pub(crate) struct LeafIterator<'a> {
-    nodes: Vec<&'a Node>,
+// TODO: Get it to not clone?
+pub(super) struct LeafIterator<'a> {
+    nodes: Vec<&'a Leaf>,
     index: usize,
 }
 
@@ -13,23 +14,26 @@ impl<'a> LeafIterator<'a> {
         Self { nodes, index: 0 }
     }
 
-    fn traverse(node: &'a Node, nodes: &mut Vec<&'a Node>) {
-        if node.left.is_none() && node.right.is_none() {
-            nodes.push(node);
-        }
+    fn traverse(node: &'a Node, nodes: &mut Vec<&'a Leaf>) {
+        match node {
+            Node::Leaf(node) => {
+                nodes.push(&node);
+            }
+            Node::Internal(internal) => {
+                if let Some(left) = &internal.left {
+                    Self::traverse(left, nodes);
+                }
 
-        if let Some(left) = &node.left {
-            Self::traverse(left, nodes);
-        }
-
-        if let Some(right) = &node.right {
-            Self::traverse(right, nodes);
+                if let Some(right) = &internal.right {
+                    Self::traverse(right, nodes);
+                }
+            }
         }
     }
 }
 
 impl<'a> Iterator for LeafIterator<'a> {
-    type Item = &'a Node;
+    type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.nodes.len() {
@@ -37,7 +41,8 @@ impl<'a> Iterator for LeafIterator<'a> {
         } else {
             let node = self.nodes[self.index];
             self.index += 1;
-            Some(node)
+            let val = node.val.to_vec().iter().take(node.last_char_index).collect();
+            Some(val)
         }
     }
 }

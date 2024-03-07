@@ -81,7 +81,7 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-// TODO: Tidy this shit up 
+// TODO: Tidy this shit up
 fn setup_logger() {
     fern::Dispatch::new()
         .format(|out, message, record| {
@@ -94,5 +94,6 @@ fn setup_logger() {
         })
         .level(log::LevelFilter::Debug)
         .chain(fern::log_file("output.log").unwrap())
-        .apply().unwrap()
+        .apply()
+        .unwrap()
 }

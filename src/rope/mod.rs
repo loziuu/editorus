@@ -1,10 +1,22 @@
-use self::iter::LeafIterator;
+use std::sync::Arc;
 
+use self::{
+    func::{insert, remove_at, Context},
+    internal::Internal,
+    iter::LeafIterator,
+    node::Node,
+};
+
+mod func;
+mod internal;
 mod iter;
+mod leaf;
+mod node;
 
 // Rope data structure
+#[derive(Debug, Clone)]
 struct Rope {
-    root: Box<Node>,
+    root: Arc<Node>,
     len: usize,
 }
 
@@ -12,48 +24,82 @@ struct Rope {
 impl Rope {
     fn new() -> Self {
         Self {
-            root: Box::new(Node::new()),
+            root: Arc::new(Node::Internal(Internal::new())),
             len: 0,
         }
     }
 
+    fn with_root(node: Node, len: usize) -> Rope {
+        match node {
+            Node::Leaf(_) => panic!("Root cannot be leaf!"),
+            Node::Internal(_) => Rope {
+                len,
+                root: Arc::new(node),
+            },
+        }
+    }
+
+    // TODO: Do we really need to clone in this method?
     fn value(&self) -> String {
         LeafIterator::new(&self.root)
-            .map(|node| String::from_utf8(node.val.clone()).unwrap())
+            .map(|val| val.clone())
             .collect()
     }
 
-    fn append(&mut self, arg: &str) {
-        self.insert(arg, self.len)
+    fn len(&self) -> usize {
+        self.len
     }
 
-    fn insert(&mut self, arg: &str, index: usize) {
+    fn append(&mut self, arg: &str) {
+        self.insert(self.len, arg)
+    }
+
+    // TODO: Add max node len
+    // TODO: Use result
+    fn insert(&mut self, index: usize, arg: &str) {
+        let node = Arc::make_mut(&mut self.root);
         if index > self.len {
             panic!("Index out of bounds");
         }
-        todo!()
+        match node {
+            Node::Internal(_) => {
+                let context = Context::new(index, arg.to_string());
+                node.do_at(context, insert);
+            }
+            _ => {}
+        }
+        self.len += arg.len();
     }
-}
 
+    fn concat(self, other: Rope) -> Rope {
+        match self.root.as_ref() {
+            Node::Leaf(_) => panic!("Why are you a leaf?"),
+            Node::Internal(_) => {
+                let mut new_internal = Internal::new();
+                new_internal.left = Some(self.root.clone());
+                new_internal.right = Some(other.root.clone());
+                new_internal.weight = self.len;
+                Rope::with_root(Node::from(new_internal), self.len + other.len)
+            }
+        }
+    }
 
-struct Node {
-    weight: usize,
-    val: Vec<u8>,
-    left: Option<Box<Node>>,
-    right: Option<Box<Node>>,
-}
-
-impl Node {
-    pub fn new() -> Node {
-        Self {
-            weight: 0,
-            val: vec![],
-            left: None,
-            right: None,
+    fn remove_at(&mut self, index: usize) {
+        if index > self.len() {
+            panic!("Index out of bounds");
+        }
+        let node = Arc::make_mut(&mut self.root);
+        match node {
+            Node::Internal(_) => {
+                let context = Context::new(index, "".to_string());
+                node.do_at(context, remove_at);
+            }
+            _ => {}
         }
     }
 }
 
+// TODO: Add handling lines
 #[cfg(test)]
 mod tests {
     use super::Rope;
@@ -62,7 +108,7 @@ mod tests {
     fn create_empty_rope() {
         let rope = Rope::new();
 
-        assert_eq!(rope.root.weight, 0);
+        assert_eq!(rope.root.weight(), 0);
         assert_eq!(rope.value(), "");
     }
 
@@ -72,7 +118,158 @@ mod tests {
 
         rope.append("hello");
 
-        assert_eq!(rope.root.weight, 5);
+        assert_eq!(rope.root.weight(), 5);
         assert_eq!(rope.value(), "hello");
+    }
+
+    #[test]
+    fn concat_ropes() {
+        let mut first = Rope::new();
+        let mut second = Rope::new();
+
+        first.append("hello");
+        second.append(" world");
+
+        let rope = first.concat(second);
+        assert_eq!("hello world", rope.value());
+    }
+
+    #[test]
+    fn add_in_the_middle() {
+        let mut first = Rope::new();
+        let mut second = Rope::new();
+
+        first.append("Hello");
+        second.append(" World");
+
+        let mut rope = first.concat(second);
+        assert_eq!("Hello World", rope.value());
+
+        rope.insert(5, " beaufitul");
+        assert_eq!("Hello beaufitul World", rope.value());
+    }
+
+    #[test]
+    fn add_at_start() {
+        let mut first = Rope::new();
+        let mut second = Rope::new();
+
+        first.append("Hello");
+        second.append(" World");
+
+        let mut rope = first.concat(second);
+        assert_eq!("Hello World", rope.value());
+
+        rope.insert(0, "Let's say ");
+        assert_eq!("Let's say Hello World", rope.value());
+    }
+
+    // TODO: Verify if this clones the strings
+    #[test]
+    fn clone_and_add() {
+        let mut first = Rope::new();
+        let mut second = Rope::new();
+
+        first.append("Hello");
+        second.append(" World");
+
+        let concatenated = first.concat(second);
+        assert_eq!("Hello World", concatenated.value());
+
+        let mut new = concatenated.clone();
+        new.insert(5, " beaufitul");
+        assert_ne!(new.value(), concatenated.value());
+    }
+
+    #[test]
+    fn append_multiple_times() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.append(" World");
+
+        assert_eq!("Hello World", rope.value());
+        assert_eq!(11, rope.len());
+    }
+
+    #[test]
+    fn append_even_further() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.append(" World");
+        dbg!(&rope);
+        rope.append("!");
+
+        assert_eq!("Hello World!", rope.value());
+    }
+
+    #[test]
+    fn remove_at_index() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.remove_at(2);
+
+        assert_eq!("Helo", rope.value());
+    }
+
+    #[test]
+    fn remove_at_index_multiple() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.remove_at(2);
+        rope.remove_at(2);
+
+        assert_eq!("Heo", rope.value());
+    }
+
+    #[test]
+    fn remove_everything_one_by_one() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.remove_at(4);
+        rope.remove_at(3);
+        rope.remove_at(2);
+        rope.remove_at(1);
+        rope.remove_at(0);
+
+        assert_eq!("", rope.value());
+    }
+
+    #[test]
+    fn add_and_remove() {
+        let mut rope = Rope::new();
+
+        rope.append("Hello");
+        rope.remove_at(4);
+        rope.remove_at(3);
+        rope.remove_at(2);
+        rope.remove_at(1);
+        rope.remove_at(0);
+        rope.append(" World");
+
+        assert_eq!(" World", rope.value());
+    }
+
+    #[test]
+    fn append_thousand_characters_to_end() {
+        let mut rope = Rope::new();
+
+        for _ in 0..1000 {
+            rope.append("a");
+        }
+
+        assert_eq!(1000, rope.len());
+    }
+
+    #[test]
+    #[should_panic]
+    fn adding_out_of_bounds() {
+        let mut rope = Rope::new();
+        rope.append("Hello");
+        rope.insert(10, "whatever");
     }
 }

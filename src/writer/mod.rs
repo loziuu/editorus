@@ -1,8 +1,8 @@
-use std::io::{stdout, Stdout, Write};
+use std::io::{stdout, Write};
 
 use crossterm::terminal;
 
-use crate::editor::session::{Session, self};
+use crate::editor::session::Session;
 
 use self::escapes::EscapeSequence;
 

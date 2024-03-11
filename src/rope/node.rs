@@ -75,8 +75,9 @@ impl From<&str> for Node {
         if arg.len() > MAX_LEAF_LEN {
             // TODO: Split
             // Maybe we should split in half? Splitting in half would result in more balanced tree
-            let left = Node::from(&arg[..MAX_LEAF_LEN]);
-            let right = Node::from(&arg[MAX_LEAF_LEN..]);
+            let (left, right) = arg.split_at(arg.len() / 2);
+            let left = Node::from(left);
+            let right = Node::from(right);
             Node::Internal(Internal::with_branches(left, right))
         } else {
             Node::Leaf(Leaf::from(arg))

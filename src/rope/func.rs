@@ -35,6 +35,7 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         let remaining_space = MAX_LEAF_LEN - context.index - 1;
         if remaining_space < context.buffer.len() {
             // No need to split, as we can't fit anything here.
+            // TODO: What if context.buffer itself is bigger than MAX_LEAF_LEN?
             if remaining_space == 0 {
                 let right = Node::from(context.buffer.as_str());
                 let new_internal = Node::from(Internal::with_branches(Node::from(leaf.clone()), right));
@@ -43,7 +44,15 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             panic!("Implement the case when we can fit some of it.");
             let (left, right) = context.buffer.split_at(remaining_space);
             let mut new_internal = Internal::new();
-            // TODO: Split
+
+            let left_chars: Vec<char> = left.chars().into_iter().collect();
+            leaf.val[leaf.last_char_index..leaf.last_char_index+remaining_space].copy_from_slice(&left_chars); 
+            leaf.last_char_index += remaining_space;
+            
+            new_internal.weight = leaf.weight();
+            new_internal.left = Some(Arc::new(Node::from(leaf.clone())));
+            new_internal.right = Some(Arc::new(Node::from(right)));
+            return NodeResult::NewNode(Node::from(new_internal));
         }
 
         let val: Vec<char> = context.buffer.chars().collect();
@@ -56,7 +65,10 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             panic!("Index out of bounds");
         }
         // TODO: This works only for single characters I'm afraid :(
-        let new_leaf = Node::from(Leaf::from(context.buffer.as_str()));
+        // let new_leaf = Node::from(Leaf::from(context.buffer.as_str())); <- This is really bad I
+        // gues.. :(
+        
+        let new_leaf = Node::from(context.buffer.as_str());
         let mut new_internal = Internal::new();
         new_internal.weight = leaf.weight();
         new_internal.left = Some(Arc::new(Node::from(new_leaf)));

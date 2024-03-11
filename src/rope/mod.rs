@@ -266,10 +266,22 @@ mod tests {
     }
 
     #[test]
+    fn append_thousand_words_longer_than_max_leaf_len() {
+        let mut rope = Rope::new();
+
+        for _ in 0..1000 {
+            rope.append("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ");
+        }
+
+        assert_eq!(1000 * 56, rope.len());
+    }
+
+    #[test]
     #[should_panic]
     fn adding_out_of_bounds() {
         let mut rope = Rope::new();
         rope.append("Hello");
         rope.insert(10, "whatever");
     }
+
 }

@@ -1,18 +1,22 @@
 use super::node::Weight;
 
-pub const MAX_LEAF_LEN: usize = 64000;
+pub const MAX_LEAF_LEN: usize = 1024 - std::mem::size_of::<usize>();
 
 // TODO: This should be immutable eventually
 #[derive(Clone, Debug)]
 pub(super) struct Leaf {
     // TODO: Shouldn't this be on heap?
-    pub(super) val: Vec<char>,
+    pub(super) val: Vec<u8>,
     pub(super) last_char_index: usize,
 }
 
- impl Leaf {
+impl Leaf {
     pub fn available_space(&self) -> usize {
         MAX_LEAF_LEN - self.last_char_index
+    }
+
+    pub fn val(&self) -> &[u8] {
+        &self.val[..self.last_char_index]
     }
 }
 
@@ -34,11 +38,10 @@ impl From<&str> for Leaf {
         let last_index = value.len();
         // We can unwrap it as we know that it's not longer than MAX_LEAF_LEN
 
-        let mut val: Vec<char> = value.chars().take(MAX_LEAF_LEN).collect();
-        let mut alloc = ['\0'; MAX_LEAF_LEN];
+        let bytes = value.as_bytes();
+        let mut alloc = [0; MAX_LEAF_LEN];
 
-        let taken = std::mem::take(&mut val);
-        alloc[..taken.len()].copy_from_slice(&taken);
+        alloc[..bytes.len()].copy_from_slice(&bytes);
 
         Self {
             val: alloc.to_vec(),
@@ -47,16 +50,17 @@ impl From<&str> for Leaf {
     }
 }
 
-impl From<&[char]> for Leaf {
-    fn from(value: &[char]) -> Self {
+impl From<&[u8]> for Leaf {
+    fn from(value: &[u8]) -> Self {
         if value.len() > MAX_LEAF_LEN {
-            panic!("Leaf cannot be longer than {}", MAX_LEAF_LEN);
+            panic!("Leaf cannot be longer than {} bytes", MAX_LEAF_LEN);
         }
-        let mut alloc = ['\0'; MAX_LEAF_LEN];
+        let last_index = value.len();
+        let mut alloc = [0; MAX_LEAF_LEN];
         alloc[..value.len()].copy_from_slice(&value);
         Self {
             val: alloc.to_vec(),
-            last_char_index: value.len(),
+            last_char_index: last_index,
         }
     }
 }

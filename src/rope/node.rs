@@ -59,12 +59,12 @@ impl Node {
                         }
                     } else {
                         // TODO: Do it only if index < total tope len
-                        node.right = Some(Arc::new(Node::from(ctx.buffer.as_str())));
+                        node.right = Some(Arc::new(Node::from(ctx.buffer)));
                         NodeResult::EditedInPlace
                     }
                 } else {
                     // Nothing on left so we should insert leaf there.
-                    node.left = Some(Arc::new(Node::from(ctx.buffer.as_str())));
+                    node.left = Some(Arc::new(Node::from(ctx.buffer)));
                     // Is it good place for addition? What if we are doing removal?
                     node.weight += ctx.buffer.len();
                     NodeResult::EditedInPlace

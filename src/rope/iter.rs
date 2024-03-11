@@ -41,8 +41,8 @@ impl<'a> Iterator for LeafIterator<'a> {
         } else {
             let node = self.nodes[self.index];
             self.index += 1;
-            let val = node.val.to_vec().iter().take(node.last_char_index).collect();
-            Some(val)
+            let val = std::str::from_utf8(&node.val());
+            Some(val.unwrap().to_string())
         }
     }
 }

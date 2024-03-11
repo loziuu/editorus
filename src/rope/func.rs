@@ -17,13 +17,13 @@ pub enum NodeResult {
 // TODO: Refactor this to be more functional I guess, as it is pretty much only feasible for
 // addition
 #[derive(Debug)]
-pub(super) struct Context {
+pub(super) struct Context<'a> {
     pub index: usize,
-    pub buffer: String,
+    pub buffer: &'a str,
 }
 
-impl Context {
-    pub(crate) fn new(index: usize, buffer: String) -> Self {
+impl<'a> Context<'a> {
+    pub(crate) fn new(index: usize, buffer: &'a str) -> Self {
         Self { index, buffer }
     }
 }
@@ -37,7 +37,7 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         let remaining_space = MAX_LEAF_LEN - context.index;
 
         if remaining_space == 0 {
-            let right = Node::from(context.buffer.as_str());
+            let right = Node::from(context.buffer);
             let new_internal = Node::from(Internal::with_branches(Node::from(leaf.clone()), right));
             return NodeResult::NewNode(new_internal);
         }
@@ -50,7 +50,8 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             let (left, right) = context.buffer.split_at(remaining_space);
             let mut new_internal = Internal::new();
 
-            let left_chars: Vec<char> = left.chars().into_iter().collect();
+            // TODO: Make if leaf method?
+            let left_chars = left.as_bytes();
             // TODO: This is not optimal. We should be able to do this without allocation.
             leaf.val[leaf.last_char_index..leaf.last_char_index + remaining_space]
                 .copy_from_slice(&left_chars);
@@ -62,7 +63,7 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             return NodeResult::NewNode(Node::from(new_internal));
         }
 
-        let val: Vec<char> = context.buffer.chars().collect();
+        let val = context.buffer.as_bytes();
         let len = val.len();
         leaf.val[leaf.last_char_index..leaf.last_char_index + len].copy_from_slice(&val);
         leaf.last_char_index += len;
@@ -74,7 +75,7 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         // TODO: This works only for single characters I'm afraid :(
         // let new_leaf = Node::from(Leaf::from(context.buffer.as_str())); <- This is really bad I
         // gues.. :(
-        let new_leaf = Node::from(context.buffer.as_str());
+        let new_leaf = Node::from(context.buffer);
         let mut new_internal = Internal::new();
         new_internal.weight = leaf.weight();
         new_internal.left = Some(Arc::new(Node::from(new_leaf)));

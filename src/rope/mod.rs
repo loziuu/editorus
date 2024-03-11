@@ -64,7 +64,7 @@ impl Rope {
         }
         match node {
             Node::Internal(_) => {
-                let context = Context::new(index, arg.to_string());
+                let context = Context::new(index, arg);
                 node.do_at(context, insert);
             }
             _ => {}
@@ -92,7 +92,7 @@ impl Rope {
         let node = Arc::make_mut(&mut self.root);
         match node {
             Node::Internal(_) => {
-                let context = Context::new(index, "".to_string());
+                let context = Context::new(index, "");
                 node.do_at(context, remove_at);
             }
             _ => {}

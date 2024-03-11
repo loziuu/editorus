@@ -12,17 +12,18 @@ mod internal;
 mod iter;
 mod leaf;
 mod node;
+pub mod traverser;
 
 // Rope data structure
 #[derive(Debug, Clone)]
-struct Rope {
-    root: Arc<Node>,
+pub struct Rope {
+    pub(crate) root: Arc<Node>,
     len: usize,
 }
 
 // TODO: Remove all panics
 impl Rope {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             root: Arc::new(Node::Internal(Internal::new())),
             len: 0,
@@ -50,13 +51,13 @@ impl Rope {
         self.len
     }
 
-    fn append(&mut self, arg: &str) {
+    pub fn append(&mut self, arg: &str) {
         self.insert(self.len, arg)
     }
 
     // TODO: Add max node len
     // TODO: Use result
-    fn insert(&mut self, index: usize, arg: &str) {
+    pub fn insert(&mut self, index: usize, arg: &str) {
         let node = Arc::make_mut(&mut self.root);
         if index > self.len {
             panic!("Index out of bounds");
@@ -268,12 +269,29 @@ mod tests {
     #[test]
     fn append_thousand_words_longer_than_max_leaf_len() {
         let mut rope = Rope::new();
+        let phrase = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ";
+        // Stack overflow without rebalance
+        let times = 1000;
 
-        for _ in 0..1000 {
-            rope.append("Lorem ipsum dolor sit amet, consectetur adipiscing elit. ");
+        for i in 1..=times {
+            println!("Insert {}", i);
+            rope.append(phrase);
         }
 
-        assert_eq!(1000 * 56, rope.len());
+        assert_eq!(times * phrase.len(), rope.len());
+    }
+
+    #[test]
+    fn another_i_guess_question_mark() {
+        let mut rope = Rope::new();
+
+        let mut counter = 0;
+        for _ in 0..3 {
+            counter += 1;
+            println!("Insert {}", counter);
+            rope.append("Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ");
+            assert_eq!(counter * 124, rope.len());
+        }
     }
 
     #[test]
@@ -283,5 +301,4 @@ mod tests {
         rope.append("Hello");
         rope.insert(10, "whatever");
     }
-
 }

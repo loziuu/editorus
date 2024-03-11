@@ -6,7 +6,7 @@ use super::{
     leaf::{Leaf, MAX_LEAF_LEN},
 };
 
-pub(crate) trait Weight {
+pub trait Weight {
     fn weight(&self) -> usize;
 }
 
@@ -29,13 +29,17 @@ impl Node {
         F: Fn(Context, &mut Leaf) -> NodeResult,
     {
         match self {
-            Node::Leaf(node) => f(ctx, node),
+            Node::Leaf(node) => {
+                f(ctx, node)
+            }
             Node::Internal(node) => {
                 let weight = node.weight;
                 // Can we simplify this somehow?
-                if let Some(left) = node.left.as_mut() {
+                let node = if let Some(left) = node.left.as_mut() {
                     if weight > ctx.index {
                         // TODO: Should I bump the weight here? Modification will be on left so...
+                        let len = ctx.buffer.len();
+                        node.weight += len;
                         match Arc::make_mut(left).do_at(ctx, f) {
                             NodeResult::NewNode(new_node) => {
                                 node.left = Some(Arc::new(new_node));
@@ -46,6 +50,7 @@ impl Node {
                     } else if let Some(right) = node.right.as_mut() {
                         let context = Context::new(ctx.index - weight, ctx.buffer);
                         match Arc::make_mut(right).do_at(context, f) {
+                            // TODO: HERE SOMEHWHERE IS BUG.
                             NodeResult::NewNode(new_node) => {
                                 node.right = Some(Arc::new(new_node));
                                 NodeResult::EditedInPlace
@@ -54,16 +59,17 @@ impl Node {
                         }
                     } else {
                         // TODO: Do it only if index < total tope len
-                        node.right = Some(Arc::new(Node::from(Leaf::from(ctx.buffer.as_str()))));
+                        node.right = Some(Arc::new(Node::from(ctx.buffer.as_str())));
                         NodeResult::EditedInPlace
                     }
                 } else {
                     // Nothing on left so we should insert leaf there.
-                    node.left = Some(Arc::new(Node::from(Leaf::from(ctx.buffer.as_str()))));
+                    node.left = Some(Arc::new(Node::from(ctx.buffer.as_str())));
                     // Is it good place for addition? What if we are doing removal?
                     node.weight += ctx.buffer.len();
                     NodeResult::EditedInPlace
-                }
+                };
+                node
                 // I tu bedzie call? Match po NodeResult?
             }
         }
@@ -73,12 +79,12 @@ impl Node {
 impl From<&str> for Node {
     fn from(arg: &str) -> Self {
         if arg.len() > MAX_LEAF_LEN {
-            // TODO: Split
-            // Maybe we should split in half? Splitting in half would result in more balanced tree
             let (left, right) = arg.split_at(arg.len() / 2);
-            let left = Node::from(left);
-            let right = Node::from(right);
-            Node::Internal(Internal::with_branches(left, right))
+            let left_node = Node::from(left);
+            let right_node = Node::from(right);
+            // This weight is correct only for brand new nodes? 
+            let r = Node::Internal(Internal::with_branches_and_weight(left_node, right_node, left.len()));
+            r
         } else {
             Node::Leaf(Leaf::from(arg))
         }

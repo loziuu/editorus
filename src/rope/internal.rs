@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use super::node::{Node, Weight};
 
@@ -19,7 +19,14 @@ impl Internal {
     }
 
     pub fn with_branches(left: Node, right: Node) -> Self {
-        let weight = left.weight();
+        Self {
+            weight: left.weight(),
+            left: Some(Arc::new(left)),
+            right: Some(Arc::new(right)),
+        }
+    }
+
+    pub fn with_branches_and_weight(left: Node, right: Node, weight: usize) -> Self {
         Self {
             weight,
             left: Some(Arc::new(left)),

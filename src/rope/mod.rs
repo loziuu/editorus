@@ -11,7 +11,7 @@ mod func;
 mod internal;
 mod iter;
 mod leaf;
-mod node;
+pub mod node;
 pub mod traverser;
 
 // Rope data structure
@@ -77,8 +77,8 @@ impl Rope {
             Node::Leaf(_) => panic!("Why are you a leaf?"),
             Node::Internal(_) => {
                 let mut new_internal = Internal::new();
-                new_internal.left = Some(self.root.clone());
-                new_internal.right = Some(other.root.clone());
+                new_internal.branches[0] = Some(self.root.clone());
+                new_internal.branches[1] = Some(other.root.clone());
                 new_internal.weight = self.len;
                 Rope::with_root(Node::from(new_internal), self.len + other.len)
             }
@@ -283,13 +283,14 @@ mod tests {
 
     #[test]
     fn another_i_guess_question_mark() {
+        let lorem = "lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ";
         let mut rope = Rope::new();
 
         let mut counter = 0;
-        for _ in 0..3 {
+        for _ in 0..6000 {
             counter += 1;
             println!("Insert {}", counter);
-            rope.append("Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ");
+            rope.append(lorem);
             assert_eq!(counter * 124, rope.len());
         }
     }

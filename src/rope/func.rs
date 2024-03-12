@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{io::empty, sync::Arc};
 
 use super::{
     internal::Internal,
@@ -38,7 +38,11 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
 
         if remaining_space == 0 {
             let right = Node::from(context.buffer);
-            let new_internal = Node::from(Internal::with_branches(Node::from(leaf.clone()), right));
+
+            let vec = std::mem::take(&mut leaf.val);
+            let new_leaf = Leaf::new(vec, leaf.last_char_index);
+
+            let new_internal = Node::from(Internal::with_branches(Node::from(new_leaf), right));
             return NodeResult::NewNode(new_internal);
         }
 
@@ -58,8 +62,12 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             leaf.last_char_index += remaining_space;
 
             new_internal.weight = MAX_LEAF_LEN;
-            new_internal.left = Some(Arc::new(Node::from(leaf.clone())));
-            new_internal.right = Some(Arc::new(Node::from(right)));
+
+            let vec = std::mem::take(&mut leaf.val);
+            let new_leaf = Leaf::new(vec, leaf.last_char_index);
+
+            new_internal.branches[0] = Some(Arc::new(Node::from(new_leaf)));
+            new_internal.branches[1] = Some(Arc::new(Node::from(right)));
             return NodeResult::NewNode(Node::from(new_internal));
         }
 
@@ -78,9 +86,13 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         let new_leaf = Node::from(context.buffer);
         let mut new_internal = Internal::new();
         new_internal.weight = leaf.weight();
-        new_internal.left = Some(Arc::new(Node::from(new_leaf)));
+        new_internal.branches[0] = Some(Arc::new(Node::from(new_leaf)));
         // Is clone optimal here?
-        new_internal.right = Some(Arc::new(Node::from(leaf.clone())));
+
+        let vec = std::mem::take(&mut leaf.val);
+        let new_leaf = Leaf::new(vec, leaf.last_char_index);
+
+        new_internal.branches[1] = Some(Arc::new(Node::from(new_leaf)));
         NodeResult::NewNode(Node::from(new_internal))
     }
 }
@@ -105,8 +117,8 @@ pub(crate) fn remove_at(context: Context, leaf: &mut Leaf) -> NodeResult {
 
         let mut new_internal = Internal::new();
         new_internal.weight = left_leaf.weight();
-        new_internal.left = Some(Arc::new(Node::from(Leaf::from(left_leaf))));
-        new_internal.right = Some(Arc::new(Node::from(Leaf::from(right_leaf))));
+        new_internal.branches[0] = Some(Arc::new(Node::from(Leaf::from(left_leaf))));
+        new_internal.branches[1] = Some(Arc::new(Node::from(Leaf::from(right_leaf))));
         NodeResult::NewNode(Node::from(new_internal))
     }
 }

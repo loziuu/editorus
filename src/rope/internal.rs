@@ -2,35 +2,33 @@ use std::sync::Arc;
 
 use super::node::{Node, Weight};
 
+// TODO: Make this at max 4kb
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub struct Internal {
     pub(super) weight: usize,
-    pub(super) left: Option<Arc<Node>>,
-    pub(super) right: Option<Arc<Node>>,
+    pub(super) branches: [Option<Arc<Node>>; 2],
 }
 
 impl Internal {
     pub fn new() -> Self {
         Self {
             weight: 0,
-            left: None,
-            right: None,
+            branches: [None, None],
         }
     }
 
     pub fn with_branches(left: Node, right: Node) -> Self {
         Self {
             weight: left.weight(),
-            left: Some(Arc::new(left)),
-            right: Some(Arc::new(right)),
+            branches: [Some(Arc::new(left)), Some(Arc::new(right))],
         }
     }
 
     pub fn with_branches_and_weight(left: Node, right: Node, weight: usize) -> Self {
         Self {
             weight,
-            left: Some(Arc::new(left)),
-            right: Some(Arc::new(right)),
+            branches: [Some(Arc::new(left)), Some(Arc::new(right))],
         }
     }
 }

@@ -1,16 +1,25 @@
 use super::node::Weight;
 
-pub const MAX_LEAF_LEN: usize = 1024 - std::mem::size_of::<usize>();
+// We assume that one page is 4096 bytes long.
+// Vec pointer + last_char_index + vec len + vec capacity 
+pub const TOTAL_BYTES: usize = 4096;
+pub const LEAF_POINTERS_SIZE: usize = std::mem::size_of::<usize>() * 3;
+pub const OPTION_ARC_SIZE: usize = std::mem::size_of::<Option<std::sync::Arc<()>>>();
+pub const MAX_LEAF_LEN: usize = TOTAL_BYTES - (2 * LEAF_POINTERS_SIZE) - (2 * OPTION_ARC_SIZE);
 
 // TODO: This should be immutable eventually
 #[derive(Clone, Debug)]
+#[repr(C)]
 pub struct Leaf {
-    // TODO: Shouldn't this be on heap?
     pub(super) val: Vec<u8>,
     pub(super) last_char_index: usize,
 }
 
 impl Leaf {
+    pub fn new(val: Vec<u8>, last_char_index: usize) -> Self {
+        Self { val, last_char_index }
+    }
+
     pub fn available_space(&self) -> usize {
         MAX_LEAF_LEN - self.last_char_index
     }

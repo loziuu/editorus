@@ -20,11 +20,11 @@ impl<'a> LeafIterator<'a> {
                 nodes.push(&node);
             }
             Node::Internal(internal) => {
-                if let Some(left) = &internal.left {
+                if let Some(left) = &internal.branches[0] {
                     Self::traverse(left, nodes);
                 }
 
-                if let Some(right) = &internal.right {
+                if let Some(right) = &internal.branches[1] {
                     Self::traverse(right, nodes);
                 }
             }

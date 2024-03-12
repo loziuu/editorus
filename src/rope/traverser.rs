@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use log::warn;
-
 use super::{node::Node, Rope};
 
 #[derive(Clone, Debug)]
@@ -34,7 +32,7 @@ impl Traverser {
     pub fn go_right(&self) -> Arc<Traverser> {
         match &self.curr_node.as_ref() {
             Node::Leaf(_) => Arc::new(self.clone()),
-            Node::Internal(internal) => match &internal.right {
+            Node::Internal(internal) => match &internal.branches[1] {
                 Some(right) => {
                     println!("Going right");
                     Arc::new(Traverser {
@@ -54,7 +52,7 @@ impl Traverser {
     pub fn go_left(&self) -> Arc<Traverser> {
         match &self.curr_node.as_ref() {
             Node::Leaf(_) => Arc::new(self.clone()),
-            Node::Internal(internal) => match &internal.left {
+            Node::Internal(internal) => match &internal.branches[0] {
                 Some(right) => {
                     println!("Going left");
                     Arc::new(Traverser {

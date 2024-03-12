@@ -17,7 +17,7 @@ pub mod traverser;
 // Rope data structure
 #[derive(Debug, Clone)]
 pub struct Rope {
-    pub(crate) root: Arc<Node>,
+    pub root: Arc<Node>,
     len: usize,
 }
 

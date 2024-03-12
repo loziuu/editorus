@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::node::{Node, Weight};
 
 #[derive(Clone, Debug)]
-pub(super) struct Internal {
+pub struct Internal {
     pub(super) weight: usize,
     pub(super) left: Option<Arc<Node>>,
     pub(super) right: Option<Arc<Node>>,

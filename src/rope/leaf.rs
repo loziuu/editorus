@@ -4,7 +4,7 @@ pub const MAX_LEAF_LEN: usize = 1024 - std::mem::size_of::<usize>();
 
 // TODO: This should be immutable eventually
 #[derive(Clone, Debug)]
-pub(super) struct Leaf {
+pub struct Leaf {
     // TODO: Shouldn't this be on heap?
     pub(super) val: Vec<u8>,
     pub(super) last_char_index: usize,

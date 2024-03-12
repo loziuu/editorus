@@ -11,7 +11,7 @@ pub trait Weight {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum Node {
+pub enum Node {
     Leaf(Leaf),
     Internal(Internal),
 }

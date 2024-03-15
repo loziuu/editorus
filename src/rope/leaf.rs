@@ -1,13 +1,14 @@
+use std::{char::MAX, io::Bytes};
+
 use super::node::Weight;
 
 // We assume that one page is 4096 bytes long.
-// Vec pointer + last_char_index + vec len + vec capacity 
+// Vec pointer + last_char_index + vec len + vec capacity
 pub const TOTAL_BYTES: usize = 4096;
 pub const LEAF_POINTERS_SIZE: usize = std::mem::size_of::<usize>() * 3;
-pub const OPTION_ARC_SIZE: usize = std::mem::size_of::<Option<std::sync::Arc<()>>>();
-pub const MAX_LEAF_LEN: usize = TOTAL_BYTES - (2 * LEAF_POINTERS_SIZE) - (2 * OPTION_ARC_SIZE);
+pub const MAX_LEAF_LEN: usize = TOTAL_BYTES - (2 * LEAF_POINTERS_SIZE);
 
-// TODO: This should be immutable eventually
+// TODO: This should be immutable eventually... reallly?
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct Leaf {
@@ -17,7 +18,10 @@ pub struct Leaf {
 
 impl Leaf {
     pub fn new(val: Vec<u8>, last_char_index: usize) -> Self {
-        Self { val, last_char_index }
+        Self {
+            val,
+            last_char_index,
+        }
     }
 
     pub fn available_space(&self) -> usize {
@@ -41,21 +45,8 @@ impl From<&str> for Leaf {
     fn from(value: &str) -> Self {
         // TODO: This should probably split and return Node - maybe leaf, maybe internal. So
         // move it to node.rs implementation.
-        if value.len() > MAX_LEAF_LEN {
-            panic!("Leaf cannot be longer than {}", MAX_LEAF_LEN);
-        }
-        let last_index = value.len();
-        // We can unwrap it as we know that it's not longer than MAX_LEAF_LEN
-
-        let bytes = value.as_bytes();
-        let mut alloc = [0; MAX_LEAF_LEN];
-
-        alloc[..bytes.len()].copy_from_slice(&bytes);
-
-        Self {
-            val: alloc.to_vec(),
-            last_char_index: last_index,
-        }
+        // ^ it's actually done in Node::from
+        Leaf::from(value.as_bytes())
     }
 }
 
@@ -65,10 +56,11 @@ impl From<&[u8]> for Leaf {
             panic!("Leaf cannot be longer than {} bytes", MAX_LEAF_LEN);
         }
         let last_index = value.len();
-        let mut alloc = [0; MAX_LEAF_LEN];
-        alloc[..value.len()].copy_from_slice(&value);
+        let mut vec = value.to_vec();
+        vec.resize(MAX_LEAF_LEN, 0);
+
         Self {
-            val: alloc.to_vec(),
+            val: vec,
             last_char_index: last_index,
         }
     }

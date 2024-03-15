@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::{node::Node, Rope};
+use super::{node::Node, rope::Rope};
 
 #[derive(Clone, Debug)]
 pub struct Traverser {
@@ -24,7 +24,7 @@ impl Traverser {
             Some(prev) => {
                 println!("Going back");
                 prev.clone()
-            },
+            }
             None => Arc::new(self.clone()),
         }
     }
@@ -32,47 +32,38 @@ impl Traverser {
     pub fn go_right(&self) -> Arc<Traverser> {
         match &self.curr_node.as_ref() {
             Node::Leaf(_) => Arc::new(self.clone()),
-            Node::Internal(internal) => match &internal.branches[1] {
-                Some(right) => {
-                    println!("Going right");
-                    Arc::new(Traverser {
-                        curr_node: right.clone(),
-                        level: self.level + 1,
-                        prev: Some(Arc::new(self.clone())),
-                    })
-                }
-                None => {
-                    println!("No right node");
-                    Arc::new(self.clone())
-                }
-            },
+            Node::Internal(internal) => {
+                let right = &internal.branches[1];
+                Arc::new(Traverser {
+                    curr_node: right.clone(),
+                    level: self.level + 1,
+                    prev: Some(Arc::new(self.clone())),
+                })
+            }
         }
     }
 
     pub fn go_left(&self) -> Arc<Traverser> {
         match &self.curr_node.as_ref() {
             Node::Leaf(_) => Arc::new(self.clone()),
-            Node::Internal(internal) => match &internal.branches[0] {
-                Some(right) => {
-                    println!("Going left");
-                    Arc::new(Traverser {
-                        curr_node: right.clone(),
-                        level: self.level + 1,
-                        prev: Some(Arc::new(self.clone())),
-                    })
-                }
-                None => {
-                    println!("No left node");
-                    Arc::new(self.clone())
-                }
-            },
+            Node::Internal(internal) => {
+                let right = &internal.branches[0];
+                Arc::new(Traverser {
+                    curr_node: right.clone(),
+                    level: self.level + 1,
+                    prev: Some(Arc::new(self.clone())),
+                })
+            }
         }
     }
 
     pub fn current(&self) {
         match &self.curr_node.as_ref() {
             Node::Leaf(leaf) => {
-                println!("Current node is leaf on level {}. [Last index at: <{}>, Val: <{:?}>]", self.level, leaf.last_char_index, leaf.val);
+                println!(
+                    "Current node is leaf on level {}. [Last index at: <{}>, Val: <{:?}>]",
+                    self.level, leaf.last_char_index, leaf.val
+                );
             }
             Node::Internal(_) => {
                 println!(

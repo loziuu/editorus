@@ -1,4 +1,5 @@
 use crossterm::{terminal, ExecutableCommand};
+use editorus::rope::rope::Rope;
 use editorus::rope::traverser::Traverser;
 use editorus::writer::escapes::EscapeSequence;
 use std::fs::File;
@@ -33,7 +34,7 @@ impl BytesCmp for [u8] {
 static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ";
 
 fn run_rope() -> std::io::Result<()> {
-    let mut rope = rope::Rope::new();
+    let mut rope = Rope::new();
     let mut stdin = stdin();
     let mut traverser = Arc::new(Traverser::new(&rope));
 

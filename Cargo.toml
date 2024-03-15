@@ -16,3 +16,11 @@ criterion = { version = "0.4", features = ["html_reports"] }
 [[bench]]
 name = "rope_insertion"
 harness = false
+
+[[bench]]
+name = "rope_traversal"
+harness = false
+
+[[bench]]
+name = "node_from"
+harness = false

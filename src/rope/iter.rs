@@ -1,4 +1,5 @@
-use super::{leaf::Leaf, Node};
+use super::{leaf::Leaf, node::Node};
+
 
 // TODO: Get it to not clone?
 pub(super) struct LeafIterator<'a> {
@@ -20,13 +21,8 @@ impl<'a> LeafIterator<'a> {
                 nodes.push(&node);
             }
             Node::Internal(internal) => {
-                if let Some(left) = &internal.branches[0] {
-                    Self::traverse(left, nodes);
-                }
-
-                if let Some(right) = &internal.branches[1] {
-                    Self::traverse(right, nodes);
-                }
+                Self::traverse(&internal.branches[0], nodes);
+                Self::traverse(&internal.branches[1], nodes);
             }
         }
     }

@@ -11,7 +11,7 @@ pub trait Weight {
 }
 
 #[derive(Clone, Debug)]
-#[repr(u8,C)]
+#[repr(u8, C)]
 pub enum Node {
     Leaf(Leaf),
     Internal(Internal),
@@ -25,53 +25,33 @@ impl Node {
         }
     }
 
+    #[inline]
     pub(crate) fn do_at<F>(&mut self, ctx: Context, f: F) -> NodeResult
     where
         F: Fn(Context, &mut Leaf) -> NodeResult,
     {
         match self {
             Node::Leaf(node) => {
-                f(ctx, node)
+                match f(ctx, node) {
+                    NodeResult::NewNode(new_node) => {
+                        // TODO: Should if actually be std::mem::swap?
+                        *self = new_node;
+                        NodeResult::EditedInPlace
+                    }
+                    NodeResult::EditedInPlace => NodeResult::EditedInPlace,
+                }
             }
             Node::Internal(node) => {
                 let weight = node.weight;
-                // Can we simplify this somehow?
-                let node = if let Some(left) = node.branches[0].as_mut() {
-                    if weight > ctx.index {
-                        // TODO: Should I bump the weight here? Modification will be on left so...
-                        let len = ctx.buffer.len();
-                        node.weight += len;
-                        match Arc::make_mut(left).do_at(ctx, f) {
-                            NodeResult::NewNode(new_node) => {
-                                node.branches[0] = Some(Arc::new(new_node));
-                                NodeResult::EditedInPlace
-                            }
-                            _ => NodeResult::EditedInPlace,
-                        }
-                    } else if let Some(right) = node.branches[1].as_mut() {
-                        let context = Context::new(ctx.index - weight, ctx.buffer);
-                        match Arc::make_mut(right).do_at(context, f) {
-                            // TODO: HERE SOMEHWHERE IS BUG.
-                            NodeResult::NewNode(new_node) => {
-                                node.branches[1] = Some(Arc::new(new_node));
-                                NodeResult::EditedInPlace
-                            }
-                            _ => NodeResult::EditedInPlace,
-                        }
-                    } else {
-                        // TODO: Do it only if index < total tope len
-                        node.branches[1] = Some(Arc::new(Node::from(ctx.buffer)));
-                        NodeResult::EditedInPlace
-                    }
-                } else {
-                    // Nothing on left so we should insert leaf there.
-                    node.branches[0] = Some(Arc::new(Node::from(ctx.buffer)));
-                    // Is it good place for addition? What if we are doing removal?
+                if weight > ctx.index {
+                    let left = &mut node.branches[0];
                     node.weight += ctx.buffer.len();
-                    NodeResult::EditedInPlace
-                };
-                node
-                // I tu bedzie call? Match po NodeResult?
+                    Arc::make_mut(left).do_at(ctx, f)
+                } else {
+                    let right = &mut node.branches[1];
+                    let context = Context::new(ctx.index - weight, ctx.buffer);
+                    Arc::make_mut(right).do_at(context, f)
+                }
             }
         }
     }
@@ -83,8 +63,11 @@ impl From<&str> for Node {
             let (left, right) = arg.split_at(arg.len() / 2);
             let left_node = Node::from(left);
             let right_node = Node::from(right);
-            // This weight is correct only for brand new nodes? 
-            let r = Node::Internal(Internal::with_branches_and_weight(left_node, right_node, left.len()));
+            let r = Node::Internal(Internal::with_branches_and_weight(
+                left_node,
+                right_node,
+                left.len(),
+            ));
             r
         } else {
             Node::Leaf(Leaf::from(arg))

@@ -1,12 +1,19 @@
-use std::{char::MAX, io::Bytes};
-
 use super::node::Weight;
 
 // We assume that one page is 4096 bytes long.
 // Vec pointer + last_char_index + vec len + vec capacity
 pub const TOTAL_BYTES: usize = 4096;
-pub const LEAF_POINTERS_SIZE: usize = std::mem::size_of::<usize>() * 3;
-pub const MAX_LEAF_LEN: usize = TOTAL_BYTES - (2 * LEAF_POINTERS_SIZE);
+
+//pub const INTERNAL_SIZE: usize = std::mem::size_of::<usize>() + std::mem::size_of::<[u8; 2]>(); 
+pub const INTERNAL_SIZE: usize = 0;
+
+pub const LEAF_SIZE: usize = std::mem::size_of::<Vec<u8>>() + std::mem::size_of::<usize>();
+
+pub const NODE_SIZE: usize = LEAF_SIZE + INTERNAL_SIZE;
+
+// We are trying to fit internal in TOTAL_BYTES.
+//pub const MAX_LEAF_LEN: usize = (TOTAL_BYTES - NODE_SIZE) / 2;
+pub const MAX_LEAF_LEN: usize = TOTAL_BYTES; 
 
 // TODO: This should be immutable eventually... reallly?
 #[derive(Clone, Debug)]
@@ -28,7 +35,7 @@ impl Leaf {
         MAX_LEAF_LEN - self.last_char_index
     }
 
-    pub fn val(&self) -> &[u8] {
+    pub fn get_char_bytes(&self) -> &[u8] {
         &self.val[..self.last_char_index]
     }
 }
@@ -56,8 +63,9 @@ impl From<&[u8]> for Leaf {
             panic!("Leaf cannot be longer than {} bytes", MAX_LEAF_LEN);
         }
         let last_index = value.len();
-        let mut vec = value.to_vec();
-        vec.resize(MAX_LEAF_LEN, 0);
+
+        let mut vec = vec![0; MAX_LEAF_LEN];
+        vec[..last_index].copy_from_slice(value);
 
         Self {
             val: vec,

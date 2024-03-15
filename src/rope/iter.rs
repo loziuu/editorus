@@ -37,7 +37,7 @@ impl<'a> Iterator for LeafIterator<'a> {
         } else {
             let node = self.nodes[self.index];
             self.index += 1;
-            let val = std::str::from_utf8(&node.val());
+            let val = std::str::from_utf8(&node.get_char_bytes());
             Some(val.unwrap().to_string())
         }
     }

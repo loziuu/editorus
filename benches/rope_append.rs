@@ -46,6 +46,19 @@ fn append(c: &mut Criterion) {
             rope.append(LOREM);
         })
     });
+
+    group.bench_function("Into balanced large rope", |b| {
+        let mut rope = Rope::new();
+
+        for _ in 0..2500 {
+            rope.append(LOREM);
+        }
+        rope.rebalance();
+
+        b.iter(|| {
+            rope.append(LOREM);
+        })
+    });
 }
 
 criterion_group!(benches, append);

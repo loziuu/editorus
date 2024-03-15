@@ -31,7 +31,9 @@ impl BytesCmp for [u8] {
 
 //static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ";
 
-static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ";
+//static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ";
+
+static PHRASE: &'static str = "abcdefghijklmnopqr";
 
 fn run_rope() -> std::io::Result<()> {
     let mut rope = Rope::new();
@@ -51,12 +53,11 @@ fn run_rope() -> std::io::Result<()> {
             if buf[0] == 13 {
                 rope.append(PHRASE);
                 traverser = Arc::new(Traverser::new(&rope));
+            } else if buf[0] == 127 {
+                println!("Rebalancing. Moving back to root.");
+                rope.rebalance();
+                traverser = Arc::new(Traverser::new(&rope));
             } else if buf[0] == 27 {
-                if buf[0] == 127 {
-                    println!("Moving back to root");
-                    traverser = Arc::new(Traverser::new(&rope));
-                }
-
                 if buf[1..size].bytes_eq("[A".as_bytes()) {
                     traverser = traverser.go_back();
                 }

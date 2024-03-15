@@ -60,7 +60,9 @@ impl Node {
 impl From<&str> for Node {
     fn from(arg: &str) -> Self {
         if arg.len() > MAX_LEAF_LEN {
-            let (left, right) = arg.split_at(arg.len() / 2);
+            // Split at half OR split at max leaf len
+            //let (left, right) = arg.split_at(MAX_LEAF_LEN);
+            let (left, right) = arg.split_at(arg.len() / 2); 
             let left_node = Node::from(left);
             let right_node = Node::from(right);
             let r = Node::Internal(Internal::with_branches_and_weight(

@@ -21,8 +21,12 @@ fn node_from(c: &mut Criterion) {
     });
 
     group.bench_function("bigger than max lefa", |b| {
+        let mut val = format!("{}{}", LOREM, LOREM);
+        for _ in 0..10 {
+            val = format!("{}{}", val, val);
+        }
         b.iter(|| {
-            let _ = Node::from(format!("{}{}", LOREM, LOREM).as_str());
+            let _ = Node::from(val.as_str());
         })
     });
 }

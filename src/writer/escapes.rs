@@ -1,6 +1,7 @@
 use std::io::{Stdout, Write};
 
 pub enum EscapeSequence {
+    //  TODO: Do we REAAAALLLY need usize here? 
     MoveCursor(usize, usize),
     NewLine,
     ClearScreen,
@@ -35,4 +36,15 @@ impl EscapeSequence {
             }
         }
     }
+
+    // TODO: Optimize it later to not allocate on heap
+    pub fn sequence(&self) -> Vec<u8> {
+        match self {
+            EscapeSequence::MoveCursor(x, y) => format!("[{};{}H", y, x).as_bytes().to_vec(),
+            EscapeSequence::NewLine => "[1E".as_bytes().to_vec(),
+            EscapeSequence::ClearScreen => "[2J".as_bytes().to_vec(),
+            EscapeSequence::HideCursor => "[?25l".as_bytes().to_vec(),
+            EscapeSequence::ShowCursor => "[?25h".as_bytes().to_vec(),
+        }
+    } 
 }

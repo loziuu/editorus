@@ -82,18 +82,21 @@ fn run_rope() -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
-    //run_terminal()
-    run_rope()
+    run_terminal()
+    //run_rope()
 }
 
 pub fn run_terminal() -> std::io::Result<()> {
     setup_logger();
+    let (w, h) = terminal::size().unwrap();
+    let mut session = Session::new(w, h);
     let mut stdout = stdout();
     let mut stdin = stdin();
     terminal::enable_raw_mode()?;
 
+    // Get it from args dude...
     let file = File::open("./test.txt")?;
-    let mut session = Session::open_file(file)?;
+    session.open_file(file)?;
 
     writer::clear_screen();
     writer::write(&mut session)?;

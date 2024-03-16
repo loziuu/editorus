@@ -1,5 +1,9 @@
 use super::cursor::ECursor;
-use std::{fs::File, io::Read};
+use crate::display::{display::{Display, Dump, WholeDump}, sink::DisplayBufferSink};
+use std::{
+    fs::File,
+    io::{Read, Stdout},
+};
 
 pub struct ERow {
     data: Vec<u8>,
@@ -27,13 +31,25 @@ impl ERow {
 
 pub struct Session {
     // Can it be actually outside?
+    // Move to rope once confident
     data: Vec<ERow>,
+    display: Display,
     cursor: ECursor,
     dirty: bool,
 }
 
 impl Session {
-    pub fn open_file(mut file: File) -> Result<Self, std::io::Error> {
+    pub fn new(width: u16, height: u16) -> Self {
+        let session = Session {
+            data: vec![ERow::empty(0)],
+            display: Display::with_dimensions(width, height),
+            cursor: ECursor::at_home(),
+            dirty: true,
+        };
+        session
+    }
+
+    pub fn open_file(&mut self, mut file: File) -> Result<(), std::io::Error> {
         let mut content = String::new();
         file.read_to_string(&mut content)?;
         let rows: Vec<ERow> = content
@@ -42,16 +58,13 @@ impl Session {
             .map(|line| line.as_bytes())
             .map(|row| ERow::new(row.to_vec()))
             .collect();
-        let session = Session {
-            data: rows,
-            cursor: ECursor::at_home(),
-            dirty: true,
-        };
-        Ok(session)
+        self.data = rows;
+        self.rebuild_display();
+        Ok(())
     }
 
     pub fn rows(&self) -> &[ERow] {
-        self.data.as_ref()
+        &self.data
     }
 
     pub fn cursor(&self) -> &ECursor {
@@ -104,7 +117,12 @@ impl Session {
     }
 
     pub fn mark_dirty(&mut self) {
+        self.rebuild_display();
         self.dirty = true;
+    }
+
+    fn rebuild_display(&mut self) {
+        self.display.display_all(&self.data);
     }
 
     // TODO: Refactor maybe to use some commands?
@@ -141,7 +159,7 @@ impl Session {
         self.mark_dirty();
     }
 
-    // Enter button, not 'o'
+    // This should actually change data, but rather display... right?
     pub fn new_line(&mut self) {
         let current_row = &self.data[self.cursor.y - 1];
 
@@ -160,5 +178,14 @@ impl Session {
         self.cursor.down();
         self.cursor.move_to_line_beginning();
         self.mark_dirty();
+    }
+
+    pub(crate) fn display_height(&self) -> usize {
+        self.display.height() as usize
+    }
+
+    pub(crate) fn display_on(&self, stdout: &mut Stdout) -> std::io::Result<()> {
+        WholeDump::new(&self.display).dump_to(stdout);
+        Ok(())
     }
 }

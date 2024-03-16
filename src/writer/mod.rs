@@ -19,22 +19,15 @@ pub fn clear_screen() {
 
 pub fn write(session: &mut Session) -> IOResult {
     let cursor = session.cursor();
-    let rows = session.rows();
     let mut stdout = stdout();
 
     if session.is_dirty() {
         EscapeSequence::ClearScreen.execute(&mut stdout)?;
-        let (_, lines) = terminal::size().unwrap();
-
-        let num_of_rows = session.rows().len().min(lines as usize);
+        let lines = session.display_height(); 
         EscapeSequence::HideCursor.execute(&mut stdout)?;
         EscapeSequence::MoveCursor(0, 0).execute(&mut stdout)?;
-        let data = &session.rows()[..num_of_rows];
-        for row in data {
-            // TODO: Make it handle better I guess? / no unwrap()
-            stdout.write_all(row.data())?;
-            EscapeSequence::NewLine.execute(&mut stdout)?;
-        }
+        session.display_on(&mut stdout)?;
+
     }
     EscapeSequence::MoveCursor(cursor.x, cursor.y).execute(&mut stdout)?;
     EscapeSequence::ShowCursor.execute(&mut stdout)?;

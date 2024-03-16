@@ -1,9 +1,13 @@
-use crossterm::terminal;
+use crossterm::{terminal, ExecutableCommand};
+use editorus::rope::rope::Rope;
+use editorus::rope::traverser::Traverser;
+use editorus::writer::escapes::EscapeSequence;
 use std::fs::File;
 use std::io::stdout;
 use std::io::{stdin, Read, Write};
+use std::sync::Arc;
 
-use editorus::writer;
+use editorus::{rope, writer};
 
 use editorus::editor::session::Session;
 
@@ -25,7 +29,64 @@ impl BytesCmp for [u8] {
     }
 }
 
+//static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. ";
+
+//static PHRASE: &'static str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ";
+
+static PHRASE: &'static str = "abcdefghijklmnopqr";
+
+fn run_rope() -> std::io::Result<()> {
+    let mut rope = Rope::new();
+    let mut stdin = stdin();
+    let mut traverser = Arc::new(Traverser::new(&rope));
+
+    terminal::enable_raw_mode()?;
+    EscapeSequence::MoveCursor(0, 0).execute(&mut stdout())?;
+    EscapeSequence::ClearScreen.execute(&mut stdout())?;
+
+    loop {
+        let mut buf: [u8; 3] = [0; 3];
+
+        if let Ok(size) = stdin.read(&mut buf) {
+            EscapeSequence::MoveCursor(0, 0).execute(&mut stdout())?;
+            EscapeSequence::ClearScreen.execute(&mut stdout())?;
+            if buf[0] == 13 {
+                rope.append(PHRASE);
+                traverser = Arc::new(Traverser::new(&rope));
+            } else if buf[0] == 127 {
+                println!("Rebalancing. Moving back to root.");
+                rope.rebalance();
+                traverser = Arc::new(Traverser::new(&rope));
+            } else if buf[0] == 27 {
+                if buf[1..size].bytes_eq("[A".as_bytes()) {
+                    traverser = traverser.go_back();
+                }
+
+                if buf[1..size].bytes_eq("[B".as_bytes()) {
+                    traverser.current();
+                }
+
+                if buf[1..size].bytes_eq("[C".as_bytes()) {
+                    traverser = traverser.go_right();
+                }
+
+                if buf[1..size].bytes_eq("[D".as_bytes()) {
+                    traverser = traverser.go_left();
+                }
+            } else if buf[..size].bytes_eq("C".as_bytes()) {
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn main() -> std::io::Result<()> {
+    //run_terminal()
+    run_rope()
+}
+
+pub fn run_terminal() -> std::io::Result<()> {
     setup_logger();
     let mut stdout = stdout();
     let mut stdin = stdin();
@@ -81,7 +142,7 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-// TODO: Tidy this shit up 
+// TODO: Tidy this shit up
 fn setup_logger() {
     fern::Dispatch::new()
         .format(|out, message, record| {
@@ -94,5 +155,6 @@ fn setup_logger() {
         })
         .level(log::LevelFilter::Debug)
         .chain(fern::log_file("output.log").unwrap())
-        .apply().unwrap()
+        .apply()
+        .unwrap()
 }

@@ -1,5 +1,3 @@
-use log::info;
-
 use super::cursor::ECursor;
 use std::{fs::File, io::Read};
 
@@ -80,7 +78,7 @@ impl Session {
         if self.cursor.x == 1 {
             if self.cursor.y != 1 {
                 self.cursor.up();
-                self.cursor.x = self.data[self.cursor.y-1].len()+1; // (cursor.x = 1) == data[0] 
+                self.cursor.x = self.data[self.cursor.y - 1].len() + 1; // (cursor.x = 1) == data[0]
             }
         }
         self.cursor.left();
@@ -151,8 +149,10 @@ impl Session {
             let row = self.data.remove(self.cursor.y - 1);
             let data = row.data.leak();
             let x = self.cursor.x - 1;
-            self.data.insert(self.cursor.y-1, ERow::new(data[..x].to_vec()));
-            self.data.insert(self.cursor.y, ERow::new(data[x..].to_vec()));
+            self.data
+                .insert(self.cursor.y - 1, ERow::new(data[..x].to_vec()));
+            self.data
+                .insert(self.cursor.y, ERow::new(data[x..].to_vec()));
         } else {
             self.data.insert(self.cursor.y, ERow::empty(0));
         }

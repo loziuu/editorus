@@ -14,5 +14,21 @@ log = "0.4.21"
 criterion = { version = "0.4", features = ["html_reports"] }
 
 [[bench]]
-name = "insertion"
+name = "rope_append"
+harness = false
+
+[[bench]]
+name = "rope_traversal"
+harness = false
+
+[[bench]]
+name = "node_from"
+harness = false
+
+[[bench]]
+name = "rope_clone"
+harness = false
+
+[[bench]]
+name = "rope_rebalance"
 harness = false

@@ -1,21 +1,41 @@
-use super::sink::DisplayBufferSink;
 use crate::{editor::session::ERow, writer::escapes::EscapeSequence};
-use std::io::{Stdout, Write};
+use std::{
+    io::{BufWriter, Stdout, Write},
+    time::Instant,
+};
 
 struct Dimensions(u16, u16);
 
-struct Cell {
-    x: usize,
-    y: usize,
-    data: char, // char?
+pub struct Cells {
+    pub x: Vec<usize>,
+    pub y: Vec<usize>,
+    pub chars: Vec<char>,
 }
 
-impl Cell {}
+impl Cells {
+    pub fn new(count: usize) -> Self {
+        Cells {
+            x: vec![0; count],
+            y: vec![0; count],
+            chars: vec!['\0'; count],
+        }
+    }
+
+    pub(crate) fn write_to(&self, writer: &mut BufWriter<&mut Stdout>) {
+        for i in 0..self.x.len() {
+            if self.chars[i] == '\0' {
+                break;
+            }
+            EscapeSequence::MoveCursor(self.x[i], self.y[i]).execute_buffered(writer);
+            writer.write(&[self.chars[i] as u8; 1]).unwrap();
+        }
+    }
+}
 
 pub struct Display {
     dimensions: Dimensions,
     // TODO: This shit should be sorted?
-    cells: Vec<Cell>,
+    pub cells: Cells,
     // changes: Vec<Cell>, <- update only changes.
 }
 
@@ -23,7 +43,7 @@ impl Display {
     pub fn with_dimensions(width: u16, height: u16) -> Self {
         Self {
             dimensions: Dimensions(width, height),
-            cells: Vec::with_capacity(width as usize * height as usize),
+            cells: Cells::new(width as usize * height as usize),
         }
     }
 
@@ -31,22 +51,18 @@ impl Display {
         self.dimensions.1
     }
 
-    pub fn display_all(&mut self, data: &[ERow]) {
-        let mut cells = Vec::with_capacity(self.dimensions.0 as usize * self.dimensions.1 as usize);
-
+    pub fn refresh(&mut self, data: &[ERow]) {
+        let mut idx = 0;
         for row in 0..data.len() {
             let row_data = data[row].data();
 
             for col in 0..row_data.len() {
-                cells.push(Cell {
-                    x: col + 1,
-                    y: row + 1,
-                    data: char::from_u32(row_data[col] as u32).unwrap(),
-                })
+                self.cells.x[idx] = col + 1;
+                self.cells.y[idx] = row + 1;
+                self.cells.chars[idx] = char::from_u32(row_data[col] as u32).unwrap();
+                idx += 1;
             }
         }
-
-        self.cells = cells;
     }
 }
 
@@ -65,26 +81,17 @@ pub trait Dump {
 }
 
 impl<'a> Dump for WholeDump<'a> {
-    // This is very sub optimal
     fn dump_to(&self, sink: &mut Stdout) {
-        for cell in self.display.cells.iter() {
-            EscapeSequence::from(cell)
-                .execute(sink)
-                .expect("Failed to execute escape sequence.");
-            sink.write(&[cell.data as u8; 1])
-                .expect("Failed to write character.");
-        }
-    }
-}
+        let started = Instant::now();
 
-// TODO: Check if similar trait exisits in Rust std lib
-trait Baiter<'a> {
-    // Maybe get whole display?
-    fn to_bytes(cell: &'a Cell) -> &'a [u8];
-}
+        let mut writer = BufWriter::with_capacity(65535, sink);
+        EscapeSequence::ClearScreen.execute_buffered(&mut writer);
+        EscapeSequence::HideCursor.execute_buffered(&mut writer);
+        EscapeSequence::MoveCursor(0, 0).execute_buffered(&mut writer);
 
-impl From<&Cell> for EscapeSequence {
-    fn from(cell: &Cell) -> Self {
-        EscapeSequence::MoveCursor(cell.x as usize, cell.y as usize)
+        self.display.cells.write_to(&mut writer);
+
+        writer.flush().unwrap();
+        println!("Dump_to took {:?}.", started.elapsed());
     }
 }

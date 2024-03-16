@@ -1,8 +1,8 @@
 use super::cursor::ECursor;
-use crate::display::{display::{Display, Dump, WholeDump}, sink::DisplayBufferSink};
+use crate::{display::display::{Display, Dump, WholeDump}, writer::escapes::EscapeSequence};
 use std::{
     fs::File,
-    io::{Read, Stdout},
+    io::{Read, Stdout, Write},
 };
 
 pub struct ERow {
@@ -95,7 +95,6 @@ impl Session {
             }
         }
         self.cursor.left();
-        self.mark_dirty();
     }
 
     pub fn cursor_right(&mut self) {
@@ -105,7 +104,6 @@ impl Session {
             self.cursor.down();
             self.cursor.move_to_line_beginning();
         }
-        self.mark_dirty();
     }
 
     pub fn mark_clean(&mut self) {
@@ -122,7 +120,7 @@ impl Session {
     }
 
     fn rebuild_display(&mut self) {
-        self.display.display_all(&self.data);
+        self.display.refresh(&self.data);
     }
 
     // TODO: Refactor maybe to use some commands?
@@ -184,8 +182,9 @@ impl Session {
         self.display.height() as usize
     }
 
-    pub(crate) fn display_on(&self, stdout: &mut Stdout) -> std::io::Result<()> {
+    pub(crate) fn display_on(&mut self, stdout: &mut Stdout) -> std::io::Result<()> {
         WholeDump::new(&self.display).dump_to(stdout);
+        self.mark_clean();
         Ok(())
     }
 }

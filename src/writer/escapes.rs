@@ -1,7 +1,7 @@
-use std::io::{Stdout, Write};
+use std::io::{BufWriter, Stdout, Write};
 
 pub enum EscapeSequence {
-    //  TODO: Do we REAAAALLLY need usize here? 
+    //  TODO: Do we REAAAALLLY need usize here?
     MoveCursor(usize, usize),
     NewLine,
     ClearScreen,
@@ -10,6 +10,28 @@ pub enum EscapeSequence {
 }
 
 impl EscapeSequence {
+    pub fn execute_buffered(self, stdout: &mut BufWriter<&mut Stdout>) {
+        stdout.write(&[27]).unwrap();
+        match self {
+            EscapeSequence::MoveCursor(x, y) => {
+                let sequence = format!("[{};{}H", y, x); // TODO: Can we do it without String?
+                stdout.write(sequence.as_bytes()).unwrap();
+            }
+            EscapeSequence::NewLine => {
+                stdout.write("[1E".as_bytes()).unwrap();
+            }
+            EscapeSequence::ClearScreen => {
+                stdout.write("[2J".as_bytes()).unwrap();
+            }
+            EscapeSequence::HideCursor => {
+                stdout.write("[?25l".as_bytes()).unwrap();
+            }
+            EscapeSequence::ShowCursor => {
+                stdout.write("[?25h".as_bytes()).unwrap();
+            }
+        }
+    }
+
     pub fn execute(self, stdout: &mut Stdout) -> Result<(), std::io::Error> {
         stdout.write(&[27])?;
         match self {
@@ -46,5 +68,5 @@ impl EscapeSequence {
             EscapeSequence::HideCursor => "[?25l".as_bytes().to_vec(),
             EscapeSequence::ShowCursor => "[?25h".as_bytes().to_vec(),
         }
-    } 
+    }
 }

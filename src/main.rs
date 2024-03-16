@@ -98,7 +98,7 @@ pub fn run_terminal() -> std::io::Result<()> {
     let file = File::open("./test.txt")?;
     session.open_file(file)?;
 
-    writer::clear_screen();
+    EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
     writer::write(&mut session)?;
     loop {
         let mut buf: [u8; 3] = [0; 3];

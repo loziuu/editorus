@@ -1,8 +1,8 @@
-use std::io::{stdout, Stdout, Write};
+use std::{io::{stdout, Write}, time::Instant};
 
 use crossterm::terminal;
 
-use crate::editor::session::{Session, self};
+use crate::editor::session::Session;
 
 use self::escapes::EscapeSequence;
 
@@ -11,38 +11,24 @@ mod writeable;
 
 type IOResult = std::io::Result<()>;
 
-// TODO: Remove all unwraps
-pub fn clear_screen() {
-    let mut stdout = stdout();
-    EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
-}
-
 pub fn write(session: &mut Session) -> IOResult {
-    let cursor = session.cursor();
-    let rows = session.rows();
+    let now = Instant::now();
+    let (prev_x, prev_y) = (session.cursor().x, session.cursor().y);
     let mut stdout = stdout();
 
     if session.is_dirty() {
         EscapeSequence::ClearScreen.execute(&mut stdout)?;
-        let (_, lines) = terminal::size().unwrap();
-
-        let num_of_rows = session.rows().len().min(lines as usize);
         EscapeSequence::HideCursor.execute(&mut stdout)?;
         EscapeSequence::MoveCursor(0, 0).execute(&mut stdout)?;
-        let data = &session.rows()[..num_of_rows];
-        for row in data {
-            // TODO: Make it handle better I guess? / no unwrap()
-            stdout.write_all(row.data())?;
-            EscapeSequence::NewLine.execute(&mut stdout)?;
-        }
+        session.display_on(&mut stdout)?;
     }
-    EscapeSequence::MoveCursor(cursor.x, cursor.y).execute(&mut stdout)?;
+    EscapeSequence::MoveCursor(prev_x, prev_y).execute(&mut stdout)?;
     EscapeSequence::ShowCursor.execute(&mut stdout)?;
     let result = stdout.flush();
-    session.mark_clean();
 
     EscapeSequence::MoveCursor(session.cursor().x, session.cursor().y).execute(&mut stdout)?;
     stdout.flush()?;
+    //println!("Printed in {:?}", now.elapsed());
 
     result
 }

@@ -2,9 +2,9 @@ use super::node::Weight;
 
 // We assume that one page is 4096 bytes long.
 // Vec pointer + last_char_index + vec len + vec capacity
-pub const TOTAL_BYTES: usize = 4096;
+pub const TOTAL_BYTES: usize = 1024;
 
-//pub const INTERNAL_SIZE: usize = std::mem::size_of::<usize>() + std::mem::size_of::<[u8; 2]>(); 
+//pub const INTERNAL_SIZE: usize = std::mem::size_of::<usize>() + std::mem::size_of::<[u8; 2]>();
 pub const INTERNAL_SIZE: usize = 0;
 
 pub const LEAF_SIZE: usize = std::mem::size_of::<Vec<u8>>() + std::mem::size_of::<usize>();
@@ -13,7 +13,7 @@ pub const NODE_SIZE: usize = LEAF_SIZE + INTERNAL_SIZE;
 
 // We are trying to fit internal in TOTAL_BYTES.
 //pub const MAX_LEAF_LEN: usize = (TOTAL_BYTES - NODE_SIZE) / 2;
-pub const MAX_LEAF_LEN: usize = TOTAL_BYTES; 
+pub const MAX_LEAF_LEN: usize = TOTAL_BYTES;
 
 // TODO: This should be immutable eventually... reallly?
 #[derive(Clone, Debug)]

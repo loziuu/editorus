@@ -23,9 +23,6 @@ impl Cells {
 
     pub(crate) fn write_to(&self, writer: &mut BufWriter<&mut Stdout>) {
         for i in 0..self.x.len() {
-            if self.chars[i] == '\0' {
-                break;
-            }
             EscapeSequence::MoveCursor(self.x[i], self.y[i]).execute_buffered(writer);
             writer.write(&[self.chars[i] as u8; 1]).unwrap();
         }
@@ -54,7 +51,8 @@ impl Display {
     pub fn refresh(&mut self, data: &[ERow]) {
         let mut idx = 0;
         for row in 0..data.len() {
-            let row_data = data[row].data();
+            let rd = data[row].data.value();
+            let row_data = rd.as_bytes();
 
             for col in 0..row_data.len() {
                 self.cells.x[idx] = col + 1;
@@ -83,14 +81,8 @@ pub trait Dump {
 impl<'a> Dump for WholeDump<'a> {
     fn dump_to(&self, sink: &mut Stdout) {
         let started = Instant::now();
-
         let mut writer = BufWriter::with_capacity(65535, sink);
-        EscapeSequence::ClearScreen.execute_buffered(&mut writer);
-        EscapeSequence::HideCursor.execute_buffered(&mut writer);
-        EscapeSequence::MoveCursor(0, 0).execute_buffered(&mut writer);
-
         self.display.cells.write_to(&mut writer);
-
         writer.flush().unwrap();
         println!("Dump_to took {:?}.", started.elapsed());
     }

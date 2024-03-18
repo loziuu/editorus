@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{io::BufRead, sync::Arc};
 
 use super::{
     internal::Internal,
@@ -80,20 +80,17 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         if context.index > leaf.last_char_index {
             panic!("Index out of bounds");
         }
-        // TODO: This works only for single characters I'm afraid :(
-        // let new_leaf = Node::from(Leaf::from(context.buffer.as_str())); <- This is really bad I
-        // gues.. :(
-        let new_leaf = Node::from(context.buffer);
-        let mut new_internal = Internal::new();
-        new_internal.weight = leaf.weight();
-        new_internal.branches[0] = Arc::new(Node::from(new_leaf));
-        // Is clone optimal here?
+        let mut current_leaf_val = std::mem::take(&mut leaf.val);    
+        let (actual_data, _) = current_leaf_val.split_at_mut(leaf.last_char_index);
 
-        let vec = std::mem::take(&mut leaf.val);
-        let new_leaf = Leaf::new(vec, leaf.last_char_index);
-
-        new_internal.branches[1] = Arc::new(Node::from(new_leaf));
-        NodeResult::NewNode(Node::from(new_internal))
+        let (left, right) = actual_data.split_at(context.index);
+        let mut left_leaf = Leaf::from(left);
+        let right_leaf = Leaf::from(right);
+        insert(context, &mut left_leaf);
+        NodeResult::NewNode(Node::from(Internal::with_branches(
+            Node::from(left_leaf),
+            Node::from(right_leaf),
+        )))
     }
 }
 

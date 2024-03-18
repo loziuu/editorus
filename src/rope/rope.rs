@@ -1,7 +1,11 @@
 use std::sync::Arc;
 
-use super::{func::{insert, remove_at, Context}, internal::Internal, iter::LeafIterator, node::Node};
-
+use super::{
+    func::{insert, remove_at, Context},
+    internal::Internal,
+    iter::LeafIterator,
+    node::Node,
+};
 
 // Rope data structure
 #[derive(Debug, Clone)]
@@ -20,17 +24,14 @@ impl Rope {
     }
 
     fn with_root(node: Node, len: usize) -> Rope {
-        match node {
-            Node::Leaf(_) => panic!("Root cannot be leaf!"),
-            Node::Internal(_) => Rope {
-                len,
-                root: Arc::new(node),
-            },
+        Rope {
+            len,
+            root: Arc::new(node),
         }
     }
 
     // TODO: Do we really need to clone in this method?
-    fn value(&self) -> String {
+    pub fn value(&self) -> String {
         LeafIterator::new(&self.root)
             .map(|val| val.clone())
             .collect()
@@ -46,6 +47,9 @@ impl Rope {
 
     // TODO: Add max node len
     // TODO: Use result
+    // BUG BUG BUG BUG BUG BUG
+    // BUG BUG BUG BUG BUG BUG
+    // TODO: THIS SHOULD ONLY INSERTS ON FIRST INDEX!!!!
     pub fn insert(&mut self, index: usize, arg: &str) {
         let node = Arc::make_mut(&mut self.root);
         if index > self.len {
@@ -55,8 +59,7 @@ impl Rope {
         node.do_at(context, insert);
         self.len += arg.len();
     }
-
-    fn concat(self, other: Rope) -> Rope {
+    pub fn concat(self, other: Rope) -> Rope {
         let mut new_internal = Internal::new();
         new_internal.branches[0] = self.root.clone();
         new_internal.branches[1] = other.root.clone();
@@ -64,7 +67,11 @@ impl Rope {
         Rope::with_root(Node::from(new_internal), self.len + other.len)
     }
 
-    fn remove_at(&mut self, index: usize) {
+    pub fn remove_at(&mut self, index: usize) {
+        if self.len() == 0 {
+            // Do nothing
+            return;
+        }
         if index > self.len() {
             panic!("Index out of bounds");
         }
@@ -84,6 +91,26 @@ impl Rope {
     // TODO: Remove. Used only for benching traversal. Add cfg?
     pub fn do_nothing_at(&mut self) {
         self.append("");
+    }
+
+    pub fn split_at(&self, index: usize) -> (Rope, Rope) {
+        if index == 0 {
+            return (Rope::new(), self.clone());
+        }
+        if index > self.len {
+            panic!("Index out of bounds");
+        }
+        let value = self.value();
+        let (left, right) = value.split_at(index as usize);
+        (Rope::from(left), Rope::from(right))
+    }
+}
+
+impl From<&str> for Rope {
+    fn from(value: &str) -> Self {
+        let root = Node::from(value);
+        let len = value.len();
+        Rope::with_root(root, len)
     }
 }
 
@@ -288,5 +315,26 @@ mod tests {
         let mut rope = Rope::new();
         rope.append("Hello");
         rope.insert(10, "whatever");
+    }
+
+    #[test]
+    fn insert_in_middle() {
+        let mut rope = Rope::from("Hello World");
+
+        assert_eq!("Hello World", rope.value());
+
+        rope.insert(5, " beaufitul");
+        assert_eq!("Hello beaufitul World", rope.value());
+    }
+
+    #[test]
+    fn split_rope() {
+        let mut rope = Rope::from("Hello World");
+        let (left, right) = rope.split_at(5);
+
+        assert_eq!(5, left.len());
+        assert_eq!(6, right.len());
+        assert_eq!("Hello", left.value());
+        assert_eq!(" World", right.value());
     }
 }

@@ -13,6 +13,9 @@ impl ECursor {
     }
 
     pub(crate) fn left(&mut self) {
+        if self.x == 0 {
+            self.x = 1;
+        }
         if self.x != 1 {
             self.x -= 1;
         }
@@ -34,5 +37,12 @@ impl ECursor {
 
     pub(crate) fn move_to_line_beginning(&mut self) {
         self.x = 1
+    }
+
+    pub(crate) fn x(&self) -> usize {
+        if self.x < 1 {
+            return 1;
+        }
+        self.x
     }
 }

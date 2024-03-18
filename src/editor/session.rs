@@ -1,31 +1,36 @@
 use super::cursor::ECursor;
-use crate::{display::display::{Display, Dump, WholeDump}, writer::escapes::EscapeSequence};
+use crate::{
+    display::display::{Display, Dump, WholeDump},
+    rope::rope::Rope,
+};
 use std::{
     fs::File,
-    io::{Read, Stdout, Write},
+    io::{Read, Stdout},
 };
 
 pub struct ERow {
-    data: Vec<u8>,
+    pub data: Rope,
 }
 
 impl ERow {
-    fn new(data: Vec<u8>) -> Self {
+    fn empty() -> Self {
+        Self { data: Rope::new() }
+    }
+
+    fn new(data: Rope) -> Self {
         Self { data }
-    }
-
-    fn empty(allocated: usize) -> Self {
-        Self {
-            data: vec![0; allocated],
-        }
-    }
-
-    pub fn data(&self) -> &[u8] {
-        &self.data
     }
 
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+}
+
+impl From<&str> for ERow {
+    fn from(value: &str) -> Self {
+        Self {
+            data: Rope::from(value),
+        }
     }
 }
 
@@ -41,7 +46,7 @@ pub struct Session {
 impl Session {
     pub fn new(width: u16, height: u16) -> Self {
         let session = Session {
-            data: vec![ERow::empty(0)],
+            data: vec![ERow::empty()], // It's time to move to rope :)
             display: Display::with_dimensions(width, height),
             cursor: ECursor::at_home(),
             dirty: true,
@@ -55,8 +60,7 @@ impl Session {
         let rows: Vec<ERow> = content
             .lines()
             .into_iter()
-            .map(|line| line.as_bytes())
-            .map(|row| ERow::new(row.to_vec()))
+            .map(|row| ERow::from(row))
             .collect();
         self.data = rows;
         self.rebuild_display();
@@ -75,6 +79,10 @@ impl Session {
         self.cursor.up();
         if self.cursor.x > self.data[self.cursor.y - 1].len() {
             self.cursor.x = self.data[self.cursor.y - 1].len();
+        }
+
+        if self.cursor.x == 0 {
+            self.cursor.x = 1;
         }
     }
 
@@ -98,7 +106,7 @@ impl Session {
     }
 
     pub fn cursor_right(&mut self) {
-        if self.cursor.x < self.data[self.cursor.y - 1].len() {
+        if self.cursor.x <= self.data[self.cursor.y - 1].len() {
             self.cursor.right();
         } else {
             self.cursor.down();
@@ -127,9 +135,10 @@ impl Session {
     // TODO: Make it work at the end of the line
     pub fn insert(&mut self, data: &[u8]) {
         let row = &mut self.data[self.cursor.y - 1];
+        let data = std::str::from_utf8(data).unwrap();
+        row.data.insert(self.cursor.x - 1, data);
 
-        for bytes in data {
-            row.data.insert(self.cursor.x - 1, *bytes);
+        for _ in 0..data.len() {
             self.cursor.right();
         }
 
@@ -142,17 +151,18 @@ impl Session {
             return;
         }
         if self.cursor.at_start() {
-            let data = self.data[self.cursor.y - 1].data.clone();
-            self.data.remove(self.cursor.y - 1);
-            self.cursor_up();
-            self.data[self.cursor.y - 1]
-                .data
-                .extend_from_slice(data.as_slice());
-            self.cursor.x = self.data[self.cursor.y - 1].len() - data.len() + 1;
+            // We need to concat ropes
+            let prev_row = self.data.remove(self.cursor.y - 2);
+            let curr_row = self.data.remove(self.cursor.y - 2);
+            let x_final_position = prev_row.len();
+            let concat = prev_row.data.concat(curr_row.data);
+            self.data.insert(self.cursor.y - 2, ERow::new(concat));
+            self.cursor.up();
+            self.cursor.x = x_final_position + 1;
         } else {
             self.cursor.left();
             let row = &mut self.data[self.cursor.y - 1];
-            row.data.remove(self.cursor.x - 1);
+            row.data.remove_at(self.cursor.x() - 1);
         }
         self.mark_dirty();
     }
@@ -161,20 +171,21 @@ impl Session {
     pub fn new_line(&mut self) {
         let current_row = &self.data[self.cursor.y - 1];
 
-        if self.cursor.x - 1 != current_row.data.len() {
-            let row = self.data.remove(self.cursor.y - 1);
-            let data = row.data.leak();
-            let x = self.cursor.x - 1;
-            self.data
-                .insert(self.cursor.y - 1, ERow::new(data[..x].to_vec()));
-            self.data
-                .insert(self.cursor.y, ERow::new(data[x..].to_vec()));
+        if self.cursor.x() - 1 != current_row.data.len() {
+            // Split rope
+
+            let row = &mut self.data[self.cursor.y - 1];
+            let (curr, next) = row.data.split_at(self.cursor.x() - 1);
+            row.data = curr;
+            self.data.insert(self.cursor.y, ERow::new(next));
         } else {
-            self.data.insert(self.cursor.y, ERow::empty(0));
+            self.data.insert(self.cursor.y, ERow::empty());
         }
 
         self.cursor.down();
         self.cursor.move_to_line_beginning();
+        //println!("Cursor: {}", self.cursor.x);
+
         self.mark_dirty();
     }
 

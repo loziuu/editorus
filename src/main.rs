@@ -1,6 +1,5 @@
 use crossterm::terminal;
-use editorus::writer::escapes::EscapeSequence;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{stdin, Read};
 
 use editorus::writer;
@@ -47,10 +46,9 @@ pub fn run_terminal() -> std::io::Result<()> {
     let mut session = Session::new(w, h);
 
     let mut args = std::env::args();
-    args.next(); // Skip first
+    args.next(); 
 
     if let Some(file) = args.next() {
-        let file = File::open(file)?;
         session.open_file(file)?;
     } else {
         println!("No file provided");
@@ -59,10 +57,6 @@ pub fn run_terminal() -> std::io::Result<()> {
 
     let mut stdin = stdin();
     terminal::enable_raw_mode()?;
-
-    // Get it from args dude...
-    let file = File::open("./test.txt")?;
-    session.open_file(file)?;
 
     loop {
         writer::write(&mut session)?;
@@ -79,6 +73,7 @@ pub fn run_terminal() -> std::io::Result<()> {
                 session.backspace();
             } else if buf[0] == 23 {
                 // CTRL + W 
+                session.save_file(); 
             } else if buf[0] == 21 {
                 // CTRL + U
             } else {

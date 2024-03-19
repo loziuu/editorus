@@ -44,12 +44,17 @@ impl Display {
     }
 
     pub fn refresh(&mut self, data: &[ERow]) {
+        self.cells = Cells::new(self.dimensions.0 as usize * self.dimensions.1 as usize);
+
         let mut idx = 0;
         for row in 0..data.len() {
             let rd = data[row].data.value();
 
             // Iterate over chars?
             for (col, c) in rd.chars().enumerate() {
+                if col == self.dimensions.0 as usize - 1 {
+                    break;
+                }
                 self.cells.x[idx] = col + 1;
                 self.cells.y[idx] = row + 1;
                 self.cells.chars[idx] = c;

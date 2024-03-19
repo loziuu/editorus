@@ -1,4 +1,4 @@
-use std::{io::BufRead, sync::Arc};
+use std::sync::Arc;
 
 use super::{
     internal::Internal,
@@ -17,7 +17,7 @@ pub enum NodeResult {
 // TODO: Refactor this to be more functional I guess, as it is pretty much only feasible for
 // addition
 #[derive(Debug)]
-pub(super) struct Context<'a> {
+pub(crate) struct Context<'a> {
     pub index: usize,
     pub buffer: &'a str,
 }
@@ -80,7 +80,7 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         if context.index > leaf.last_char_index {
             panic!("Index out of bounds");
         }
-        let mut current_leaf_val = std::mem::take(&mut leaf.val);    
+        let mut current_leaf_val = std::mem::take(&mut leaf.val);
         let (actual_data, _) = current_leaf_val.split_at_mut(leaf.last_char_index);
 
         let (left, right) = actual_data.split_at(context.index);

@@ -25,5 +25,7 @@
 [] Refactor cursor.rs. Logic is in two places now dude... c'mon!
 [] Add tests?
 [] Handle args
+[] Add delete key handler
 
 # Known issues
+-- To many to list :( 

@@ -1,11 +1,15 @@
+use crossterm::terminal;
+
 use super::cursor::ECursor;
 use crate::{
     display::display::{Display, Dump, WholeDump},
-    rope::rope::Rope,
+    rope::rope::Rope, writer::escapes::EscapeSequence,
 };
 use std::{
-    fs::File,
-    io::{Read, Stdout},
+    fs::{File, OpenOptions},
+    io::{BufWriter, Read, Stdout, Write},
+    os::fd,
+    path::Path,
 };
 
 pub struct ERow {
@@ -41,6 +45,7 @@ pub struct Session {
     display: Display,
     cursor: ECursor,
     dirty: bool,
+    fd: Option<String>,
 }
 
 impl Session {
@@ -50,19 +55,26 @@ impl Session {
             display: Display::with_dimensions(width, height),
             cursor: ECursor::at_home(),
             dirty: true,
+            fd: None,
         };
         session
     }
 
-    pub fn open_file(&mut self, mut file: File) -> Result<(), std::io::Error> {
+    pub fn open_file(&mut self, file_path: String) -> Result<(), std::io::Error> {
         let mut content = String::new();
+        let mut file = OpenOptions::new().read(true).open(&file_path)?;
         file.read_to_string(&mut content)?;
         let rows: Vec<ERow> = content
             .lines()
             .into_iter()
             .map(|row| ERow::from(row))
             .collect();
-        self.data = rows;
+        if rows.is_empty() {
+            self.data.push(ERow::empty());
+        } else {
+            self.data = rows;
+        }
+        self.fd = Some(file_path);
         self.rebuild_display();
         Ok(())
     }
@@ -89,9 +101,9 @@ impl Session {
     pub fn cursor_down(&mut self) {
         if self.cursor.y != self.data.len() {
             self.cursor.down();
-        }
-        if self.cursor.x > self.data[self.cursor.y - 1].len() {
-            self.cursor.x = self.data[self.cursor.y - 1].len();
+            if self.cursor.x > self.data[self.cursor.y - 1].len() {
+                self.cursor.x = self.data[self.cursor.y - 1].len();
+            }
         }
     }
 
@@ -99,7 +111,7 @@ impl Session {
         if self.cursor.x == 1 {
             if self.cursor.y != 1 {
                 self.cursor.up();
-                self.cursor.x = self.data[self.cursor.y - 1].len() + 1; // (cursor.x = 1) == data[0]
+                self.cursor.x = self.data[self.cursor.y - 1].len() + 2; // (cursor.x = 1) == data[0]
             }
         }
         self.cursor.left();
@@ -109,8 +121,12 @@ impl Session {
         if self.cursor.x <= self.data[self.cursor.y - 1].len() {
             self.cursor.right();
         } else {
-            self.cursor.down();
-            self.cursor.move_to_line_beginning();
+            // Refactor so cursor_down() return result.
+            let curr_row = self.cursor.y;
+            self.cursor_down();
+            if self.cursor.y != curr_row {
+                self.cursor.move_to_line_beginning();
+            }
         }
     }
 
@@ -190,5 +206,33 @@ impl Session {
         WholeDump::new(&self.display).dump_to(stdout);
         self.mark_clean();
         Ok(())
+    }
+
+    // Handle for empty buffer once we have it
+    pub fn save_file(&self) {
+        if let Some(file_path) = &self.fd {
+            let file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(file_path)
+                .unwrap();
+            let mut file_writer = BufWriter::new(file);
+            for row in &self.data {
+                file_writer.write_all(row.data.value().as_bytes()).unwrap();
+                // Get line ending per system
+                file_writer.write_all(b"\n").unwrap();
+            }
+            file_writer.flush().unwrap();
+        }
+    }
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        let mut stdout = std::io::stdout();
+        EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
+        // Remove terminal alltogether
+        terminal::disable_raw_mode().unwrap();
     }
 }

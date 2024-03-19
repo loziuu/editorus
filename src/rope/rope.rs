@@ -288,7 +288,6 @@ mod tests {
         let times = 1000;
 
         for i in 1..=times {
-            println!("Insert {}", i);
             rope.append(phrase);
         }
 
@@ -303,7 +302,6 @@ mod tests {
         let mut counter = 0;
         for _ in 0..6000 {
             counter += 1;
-            println!("Insert {}", counter);
             rope.append(lorem);
             assert_eq!(counter * 124, rope.len());
         }

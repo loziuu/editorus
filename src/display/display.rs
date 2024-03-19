@@ -1,8 +1,5 @@
 use crate::{editor::session::ERow, writer::escapes::EscapeSequence};
-use std::{
-    io::{BufWriter, Stdout, Write},
-    time::Instant,
-};
+use std::io::{BufWriter, Stdout, Write};
 
 struct Dimensions(u16, u16);
 
@@ -31,9 +28,7 @@ impl Cells {
 
 pub struct Display {
     dimensions: Dimensions,
-    // TODO: This shit should be sorted?
-    pub cells: Cells,
-    // changes: Vec<Cell>, <- update only changes.
+    cells: Cells,
 }
 
 impl Display {
@@ -52,12 +47,12 @@ impl Display {
         let mut idx = 0;
         for row in 0..data.len() {
             let rd = data[row].data.value();
-            let row_data = rd.as_bytes();
 
-            for col in 0..row_data.len() {
+            // Iterate over chars?
+            for (col, c) in rd.chars().enumerate() {
                 self.cells.x[idx] = col + 1;
                 self.cells.y[idx] = row + 1;
-                self.cells.chars[idx] = char::from_u32(row_data[col] as u32).unwrap();
+                self.cells.chars[idx] = c;
                 idx += 1;
             }
         }
@@ -80,10 +75,8 @@ pub trait Dump {
 
 impl<'a> Dump for WholeDump<'a> {
     fn dump_to(&self, sink: &mut Stdout) {
-        let started = Instant::now();
         let mut writer = BufWriter::with_capacity(65535, sink);
         self.display.cells.write_to(&mut writer);
         writer.flush().unwrap();
-        println!("Dump_to took {:?}.", started.elapsed());
     }
 }

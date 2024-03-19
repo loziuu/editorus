@@ -1,6 +1,4 @@
-use std::{io::{stdout, Write}, time::Instant};
-
-use crossterm::terminal;
+use std::io::{stdout, Write};
 
 use crate::editor::session::Session;
 
@@ -12,7 +10,6 @@ mod writeable;
 type IOResult = std::io::Result<()>;
 
 pub fn write(session: &mut Session) -> IOResult {
-    let now = Instant::now();
     let (prev_x, prev_y) = (session.cursor().x, session.cursor().y);
     let mut stdout = stdout();
 
@@ -22,13 +19,8 @@ pub fn write(session: &mut Session) -> IOResult {
         EscapeSequence::MoveCursor(0, 0).execute(&mut stdout)?;
         session.display_on(&mut stdout)?;
     }
-    EscapeSequence::MoveCursor(prev_x, prev_y).execute(&mut stdout)?;
     EscapeSequence::ShowCursor.execute(&mut stdout)?;
-    let result = stdout.flush();
+    EscapeSequence::MoveCursor(prev_x, prev_y).execute(&mut stdout)?; 
 
-    EscapeSequence::MoveCursor(session.cursor().x, session.cursor().y).execute(&mut stdout)?;
-    stdout.flush()?;
-    //println!("Printed in {:?}", now.elapsed());
-
-    result
+    stdout.flush()
 }

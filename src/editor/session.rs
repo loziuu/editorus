@@ -172,8 +172,6 @@ impl Session {
         let current_row = &self.data[self.cursor.y - 1];
 
         if self.cursor.x() - 1 != current_row.data.len() {
-            // Split rope
-
             let row = &mut self.data[self.cursor.y - 1];
             let (curr, next) = row.data.split_at(self.cursor.x() - 1);
             row.data = curr;
@@ -184,13 +182,8 @@ impl Session {
 
         self.cursor.down();
         self.cursor.move_to_line_beginning();
-        //println!("Cursor: {}", self.cursor.x);
 
         self.mark_dirty();
-    }
-
-    pub(crate) fn display_height(&self) -> usize {
-        self.display.height() as usize
     }
 
     pub(crate) fn display_on(&mut self, stdout: &mut Stdout) -> std::io::Result<()> {

@@ -1,11 +1,27 @@
+// Add offset
+struct Offset(usize, usize);
+
 pub struct ECursor {
     pub x: usize,
     pub y: usize,
+    offset: Offset,
 }
 
 impl ECursor {
     pub fn at_home() -> ECursor {
-        Self { x: 1, y: 1 }
+        Self {
+            x: 1,
+            y: 1,
+            offset: Offset(0, 0),
+        }
+    }
+
+    pub fn with_offset(x: usize, y: usize) -> Self {
+        Self {
+            x: 1,
+            y: 1,
+            offset: Offset(x, y),
+        }
     }
 
     pub(crate) fn right(&mut self) {
@@ -13,12 +29,13 @@ impl ECursor {
     }
 
     pub(crate) fn left(&mut self) {
-        if self.x == 0 {
-            self.x = 1;
-        }
-        if self.x != 1 {
+        if self.x > 1 {
             self.x -= 1;
         }
+    }
+
+    fn min_x(&self) -> usize {
+        1 + self.offset.0
     }
 
     pub(crate) fn down(&mut self) {
@@ -26,13 +43,13 @@ impl ECursor {
     }
 
     pub(crate) fn up(&mut self) {
-        if self.y != 1 {
+        if self.y != self.offset.1 + 1 {
             self.y -= 1;
         }
     }
 
     pub(crate) fn at_start(&self) -> bool {
-        self.x == 1 && self.y != 1
+        self.x == 1 && self.y != 1 
     }
 
     pub(crate) fn move_to_line_beginning(&mut self) {
@@ -40,9 +57,14 @@ impl ECursor {
     }
 
     pub(crate) fn x(&self) -> usize {
-        if self.x < 1 {
-            return 1;
-        }
-        self.x
+        self.get_x()
+    }
+
+    pub(crate) fn x_relative(&self) -> usize {
+        self.x - 1
+    }
+
+    fn get_x(&self) -> usize {
+        self.x + self.offset.0
     }
 }

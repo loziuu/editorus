@@ -1,4 +1,5 @@
 use crossterm::terminal;
+use editorus::editor::config::Configuration;
 use std::io::{stdin, Read};
 
 use editorus::writer;
@@ -37,15 +38,17 @@ pub fn key_check() -> std::io::Result<()> {
 
 fn main() -> std::io::Result<()> {
     run_terminal()
-//    key_check()
+    //    key_check()
 }
 
 pub fn run_terminal() -> std::io::Result<()> {
+    let config = parse_config()?;
+
     let (w, h) = terminal::size().unwrap();
-    let mut session = Session::new(w, h);
+    let mut session = Session::with_config(w, h, config);
 
     let mut args = std::env::args();
-    args.next(); 
+    args.next();
 
     if let Some(file) = args.next() {
         session.open_file(file)?;
@@ -71,8 +74,8 @@ pub fn run_terminal() -> std::io::Result<()> {
                 // BACKSPACE
                 session.backspace();
             } else if buf[0] == 23 {
-                // CTRL + W 
-                session.save_file(); 
+                // CTRL + W
+                session.save_file();
             } else if buf[0] == 21 {
                 // CTRL + U
             } else {
@@ -104,4 +107,10 @@ pub fn run_terminal() -> std::io::Result<()> {
     }
 
     Ok(())
+}
+
+fn parse_config() -> std::io::Result<Configuration> {
+    Ok(Configuration {
+        show_line_numbers: true,
+    })
 }

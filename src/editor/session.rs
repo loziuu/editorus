@@ -1,15 +1,13 @@
 use crossterm::terminal;
 
-use super::cursor::ECursor;
+use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
     rope::rope::Rope, writer::escapes::EscapeSequence,
 };
 use std::{
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     io::{BufWriter, Read, Stdout, Write},
-    os::fd,
-    path::Path,
 };
 
 pub struct ERow {
@@ -38,6 +36,7 @@ impl From<&str> for ERow {
     }
 }
 
+// Move cursor to display?
 pub struct Session {
     // Can it be actually outside?
     // Move to rope once confident
@@ -54,6 +53,19 @@ impl Session {
             data: vec![ERow::empty()], // It's time to move to rope :)
             display: Display::with_dimensions(width, height),
             cursor: ECursor::at_home(),
+            dirty: true,
+            fd: None,
+        };
+        session
+    }
+
+    pub fn with_config(width: u16, height: u16, config: Configuration) -> Self {
+        let cursor_offset_x = if config.show_line_numbers { 4 } else { 0 };
+
+        let session = Session {
+            data: vec![ERow::empty()],
+            display: Display::with_dimensions(width, height),
+            cursor: ECursor::with_offset(cursor_offset_x, 0),
             dirty: true,
             fd: None,
         };
@@ -102,7 +114,7 @@ impl Session {
         if self.cursor.y != self.data.len() {
             self.cursor.down();
             if self.cursor.x > self.data[self.cursor.y - 1].len() {
-                self.cursor.x = self.data[self.cursor.y - 1].len();
+                self.cursor.x = self.data[self.cursor.y - 1].len()+1;
             }
         }
     }
@@ -144,7 +156,7 @@ impl Session {
     }
 
     fn rebuild_display(&mut self) {
-        self.display.refresh(&self.data);
+        self.display.refresh(&self.data, Default::default());
     }
 
     // TODO: Refactor maybe to use some commands?
@@ -152,7 +164,7 @@ impl Session {
     pub fn insert(&mut self, data: &[u8]) {
         let row = &mut self.data[self.cursor.y - 1];
         let data = std::str::from_utf8(data).unwrap();
-        row.data.insert(self.cursor.x - 1, data);
+        row.data.insert(self.cursor.x_relative(), data);
 
         for _ in 0..data.len() {
             self.cursor.right();
@@ -178,7 +190,7 @@ impl Session {
         } else {
             self.cursor.left();
             let row = &mut self.data[self.cursor.y - 1];
-            row.data.remove_at(self.cursor.x() - 1);
+            row.data.remove_at(self.cursor.x_relative());
         }
         self.mark_dirty();
     }
@@ -189,7 +201,7 @@ impl Session {
 
         if self.cursor.x() - 1 != current_row.data.len() {
             let row = &mut self.data[self.cursor.y - 1];
-            let (curr, next) = row.data.split_at(self.cursor.x() - 1);
+            let (curr, next) = row.data.split_at(self.cursor.x_relative());
             row.data = curr;
             self.data.insert(self.cursor.y, ERow::new(next));
         } else {
@@ -230,9 +242,8 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        let mut stdout = std::io::stdout();
-        EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
-        // Remove terminal alltogether
-        terminal::disable_raw_mode().unwrap();
+        //let mut stdout = std::io::stdout();
+        //EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
+        //terminal::disable_raw_mode().unwrap();
     }
 }

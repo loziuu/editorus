@@ -10,7 +10,7 @@ mod writeable;
 type IOResult = std::io::Result<()>;
 
 pub fn write(session: &mut Session) -> IOResult {
-    let (prev_x, prev_y) = (session.cursor().x, session.cursor().y);
+    let (prev_x, prev_y) = (session.cursor().x(), session.cursor().y);
     let mut stdout = stdout();
 
     if session.is_dirty() {

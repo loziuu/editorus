@@ -9,6 +9,18 @@ pub struct Cells {
     pub chars: Vec<char>,
 }
 
+pub struct DisplayOptions {
+    show_line_numbers: bool,
+}
+
+impl Default for DisplayOptions {
+    fn default() -> Self {
+        Self {
+            show_line_numbers: true,
+        }
+    }
+}
+
 impl Cells {
     pub fn new(count: usize) -> Self {
         Cells {
@@ -26,6 +38,7 @@ impl Cells {
     }
 }
 
+// Add viewport
 pub struct Display {
     dimensions: Dimensions,
     cells: Cells,
@@ -43,19 +56,45 @@ impl Display {
         self.dimensions.1
     }
 
-    pub fn refresh(&mut self, data: &[ERow]) {
+    pub fn refresh(&mut self, data: &[ERow], display_options: DisplayOptions) {
         self.cells = Cells::new(self.dimensions.0 as usize * self.dimensions.1 as usize);
+
+        let offset_x = if display_options.show_line_numbers {
+            4
+        } else {
+            0
+        };
 
         let mut idx = 0;
         for row in 0..data.len() {
             let rd = data[row].data.value();
+
+            if display_options.show_line_numbers {
+                let row_number = (row + 1).to_string();
+                let mut chars = row_number.chars();
+
+                let whitespaces = 4-row_number.len();
+                for i in 1..whitespaces {
+                    self.cells.x[idx] = i;
+                    self.cells.y[idx] = row + 1;
+                    self.cells.chars[idx] = ' ';
+                    idx += 1
+                }
+
+                for i in whitespaces..=3 {
+                    self.cells.x[idx] = i;
+                    self.cells.y[idx] = row + 1;
+                    self.cells.chars[idx] = chars.next().unwrap_or(' ');
+                    idx += 1;
+                }
+            }
 
             // Iterate over chars?
             for (col, c) in rd.chars().enumerate() {
                 if col == self.dimensions.0 as usize - 1 {
                     break;
                 }
-                self.cells.x[idx] = col + 1;
+                self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = row + 1;
                 self.cells.chars[idx] = c;
                 idx += 1;

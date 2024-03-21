@@ -62,13 +62,18 @@ impl From<&str> for Node {
         if arg.len() > MAX_LEAF_LEN {
             // Split at half OR split at max leaf len
             //let (left, right) = arg.split_at(MAX_LEAF_LEN);
-            let (left, right) = arg.split_at(arg.len() / 2); 
+            // THIS IS WRONG.
+
+            let n = arg.chars().count();
+
+            let (left, right) = arg.split_at(n / 2);
+
             let left_node = Node::from(left);
             let right_node = Node::from(right);
             let r = Node::Internal(Internal::with_branches_and_weight(
                 left_node,
                 right_node,
-                left.len(),
+                n / 2,
             ));
             r
         } else {

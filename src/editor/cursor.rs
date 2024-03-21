@@ -1,6 +1,8 @@
 // Add offset
+#[derive(Debug)]
 struct Offset(usize, usize);
 
+#[derive(Debug)]
 pub struct ECursor {
     pub x: usize,
     pub y: usize,

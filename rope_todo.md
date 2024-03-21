@@ -6,3 +6,6 @@
 [] remove from to
 [] rebalance (better rebalance?)
 [] Better split
+
+[] Split is somewhat broken
+[x] Remove is broken after UTF-8

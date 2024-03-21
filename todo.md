@@ -7,6 +7,7 @@
 [x] Don't allow cursor to go out of bounds in ERow
 [x] Use anything else other than vector ugh...
 [x] Separate display from data buffer (Rope)
+[x] New line on > 1 byte character does not work
 [] Command for edit mode
 [] "Dirty" on ERow level, (is this even still relevant?)
 [] Handle unicode (<- it's on rope level i guess?)

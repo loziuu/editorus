@@ -57,12 +57,13 @@ impl Rope {
         }
         let context = Context::new(index, arg);
         node.do_at(context, insert);
-        self.len += arg.len();
+        self.len += arg.chars().count();
     }
+
     pub fn concat(self, other: Rope) -> Rope {
         let mut new_internal = Internal::new();
-        new_internal.branches[0] = self.root.clone();
-        new_internal.branches[1] = other.root.clone();
+        new_internal.branches[0] = self.root;
+        new_internal.branches[1] = other.root;
         new_internal.weight = self.len;
         Rope::with_root(Node::from(new_internal), self.len + other.len)
     }
@@ -101,7 +102,13 @@ impl Rope {
             panic!("Index out of bounds");
         }
         let value = self.value();
-        let (left, right) = value.split_at(index as usize);
+
+        let u_idx: usize = value.chars()
+            .take(index)
+            .map(|c| c.len_utf8())
+            .sum();
+
+        let (left, right) = value.split_at(u_idx);
         (Rope::from(left), Rope::from(right))
     }
 }
@@ -109,7 +116,8 @@ impl Rope {
 impl From<&str> for Rope {
     fn from(value: &str) -> Self {
         let root = Node::from(value);
-        let len = value.len();
+
+        let len = value.chars().count();
         Rope::with_root(root, len)
     }
 }
@@ -142,11 +150,12 @@ mod tests {
         let mut first = Rope::new();
         let mut second = Rope::new();
 
-        first.append("hello");
-        second.append(" world");
+        first.append("śhello");
+        second.append(" worldś");
 
         let rope = first.concat(second);
-        assert_eq!("hello world", rope.value());
+        assert_eq!(13, rope.len());
+        assert_eq!("śhello worldś", rope.value());
     }
 
     #[test]
@@ -327,12 +336,109 @@ mod tests {
 
     #[test]
     fn split_rope() {
-        let mut rope = Rope::from("Hello World");
+        let rope = Rope::from("Hello World");
         let (left, right) = rope.split_at(5);
 
         assert_eq!(5, left.len());
         assert_eq!(6, right.len());
         assert_eq!("Hello", left.value());
         assert_eq!(" World", right.value());
+    }
+
+    #[test]
+    fn utf8_append() {
+        let mut rope = Rope::from("Hello");
+
+        rope.append(", Worlduśś!");
+
+        assert_eq!("Hello, Worlduśś!", rope.value()); 
+    }
+
+    #[test]
+    fn utf8_insert_in_middle() {
+        let mut rope = Rope::from("Hello");
+
+        rope.insert(2, "Ś");
+
+        assert_eq!("HeŚllo", rope.value());
+    }
+
+    #[test]
+    fn utf8_insert_after_utf8_character() {
+        let mut rope = Rope::from("HeŚlo");
+
+        rope.insert(3, "l");
+
+        assert_eq!("HeŚllo", rope.value());
+    }
+
+    #[test]
+    fn utf8_into_empty_rope() {
+        let mut rope = Rope::new();
+
+        rope.append("ą");
+
+        assert_eq!("ą", rope.value());
+    }
+
+    #[test]
+    fn remove_utf8() {
+        let mut rope = Rope::from("Hśello");
+
+        rope.remove_at(1);
+
+        assert_eq!("Hello", rope.value());
+    }
+
+    #[test]
+    fn remove_at_beginning_utf8() {
+        let mut rope = Rope::from("ŚHello");
+
+        rope.remove_at(0);
+
+        assert_eq!("Hello", rope.value());
+    }
+
+    #[test]
+    fn remove_at_end_utf8() {
+        let mut rope = Rope::from("Helloś");
+
+        rope.remove_at(5);
+
+        assert_eq!("Hello", rope.value());
+    }
+
+    #[test]
+    fn split_after_utf8() {
+        let rope = Rope::from("Helloś World");
+        
+        let (left, right) = rope.split_at(5);
+
+        assert_eq!("Hello", left.value());
+        assert_eq!("ś World", right.value());
+    }
+
+    #[test]
+    fn test_failing_split() {
+        let mut rope = Rope::new();
+        rope.append("śśś");
+
+        let (left, right) = rope.split_at(3);
+
+        assert_eq!("śśś", left.value());
+        assert_eq!("", right.value());
+    }
+
+    #[test]
+    fn concat_and_split() {
+        let mut a = Rope::from("asdfś");
+        let mut b = Rope::from("asdf");
+            
+        let c = a.concat(b);
+        assert_eq!("asdfśasdf", c.value());
+
+        let (left, right) = c.split_at(5);
+        assert_eq!("asdfś", left.value());
+        assert_eq!("asdf", right.value());
     }
 }

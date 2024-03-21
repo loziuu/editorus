@@ -1,9 +1,9 @@
-use crossterm::terminal;
+use log::info;
 
 use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
-    rope::rope::Rope, writer::escapes::EscapeSequence,
+    rope::rope::Rope,
 };
 use std::{
     fs::OpenOptions,
@@ -114,7 +114,7 @@ impl Session {
         if self.cursor.y != self.data.len() {
             self.cursor.down();
             if self.cursor.x > self.data[self.cursor.y - 1].len() {
-                self.cursor.x = self.data[self.cursor.y - 1].len()+1;
+                self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
             }
         }
     }
@@ -164,11 +164,10 @@ impl Session {
     pub fn insert(&mut self, data: &[u8]) {
         let row = &mut self.data[self.cursor.y - 1];
         let data = std::str::from_utf8(data).unwrap();
+
         row.data.insert(self.cursor.x_relative(), data);
 
-        for _ in 0..data.len() {
-            self.cursor.right();
-        }
+        self.cursor.right();
 
         self.mark_dirty();
     }
@@ -199,12 +198,15 @@ impl Session {
     pub fn new_line(&mut self) {
         let current_row = &self.data[self.cursor.y - 1];
 
-        if self.cursor.x() - 1 != current_row.data.len() {
+        info!("X at: {}, Current row len: {}", self.cursor.x_relative(), current_row.data.len());
+        if self.cursor.x_relative() != current_row.data.len() {
+            info!("Splitting row");
             let row = &mut self.data[self.cursor.y - 1];
             let (curr, next) = row.data.split_at(self.cursor.x_relative());
             row.data = curr;
             self.data.insert(self.cursor.y, ERow::new(next));
         } else {
+            info!("Inserting new empty line");
             self.data.insert(self.cursor.y, ERow::empty());
         }
 
@@ -245,5 +247,42 @@ impl Drop for Session {
         //let mut stdout = std::io::stdout();
         //EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
         //terminal::disable_raw_mode().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn weird_stuff() {
+        let config = crate::editor::config::Configuration {
+            show_line_numbers: true,
+        };
+        let mut session = super::Session::with_config(50, 50, config);
+
+        session.insert(b"a");
+        session.insert(b"s");
+        session.insert(b"d");
+        session.insert(b"f");
+        session.insert("ś".as_bytes());
+
+        session.new_line();
+        session.insert(b"q");
+        session.insert(b"w");
+        session.insert(b"e");
+        session.insert(b"r");
+
+        session.cursor_left();
+        session.cursor_left();
+        session.cursor_left();
+        session.cursor_left();
+        session.backspace();
+
+        println!("{:?}", session.cursor());
+
+        session.new_line();
+
+        assert_eq!(session.data[0].data.value(), "asdfś");
+        assert_eq!(session.data[1].data.value(), "qwer");
     }
 }

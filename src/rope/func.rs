@@ -33,20 +33,20 @@ impl<'a> Context<'a> {
 // TODO: Change it after leaf
 pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
     // We are appedning here
-    if context.index == leaf.last_char_index {
+    if context.index == leaf.weight() {
         let remaining_space = MAX_LEAF_LEN - context.index;
 
         if remaining_space == 0 {
             let right = Node::from(context.buffer);
 
-            let vec = std::mem::take(&mut leaf.val);
-            let new_leaf = Leaf::new(vec, leaf.last_char_index);
+            let taken_val = std::mem::take(&mut leaf.val);
+            let new_leaf = Leaf::new(taken_val, leaf.last_char_index);
 
             let new_internal = Node::from(Internal::with_branches(Node::from(new_leaf), right));
             return NodeResult::NewNode(new_internal);
         }
 
-        if remaining_space < context.buffer.len() {
+        if remaining_space < context.buffer.as_bytes().len() {
             // No need to split, as we can't fit anything here.
             // TODO: What if context.buffer itself is bigger than MAX_LEAF_LEN?
 
@@ -80,16 +80,11 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
         if context.index > leaf.last_char_index {
             panic!("Index out of bounds");
         }
-        let mut current_leaf_val = std::mem::take(&mut leaf.val);
-        let (actual_data, _) = current_leaf_val.split_at_mut(leaf.last_char_index);
-
-        let (left, right) = actual_data.split_at(context.index);
-        let mut left_leaf = Leaf::from(left);
-        let right_leaf = Leaf::from(right);
-        insert(context, &mut left_leaf);
+        let (mut left, right) = leaf.split_at_char(context.index);
+        insert(context, &mut left);
         NodeResult::NewNode(Node::from(Internal::with_branches(
-            Node::from(left_leaf),
-            Node::from(right_leaf),
+            Node::from(left),
+            Node::from(right),
         )))
     }
 }
@@ -104,18 +99,12 @@ pub(crate) fn remove_at(context: Context, leaf: &mut Leaf) -> NodeResult {
         leaf.last_char_index -= 1;
         NodeResult::EditedInPlace
     } else {
-        // Split and move index
-        let (left, right) = leaf.val.split_at(context.index);
-        let mut right_leaf = Leaf::from(&right[1..]);
-        right_leaf.last_char_index = leaf.last_char_index - context.index - 1;
-
-        let mut left_leaf = Leaf::from(left);
-        left_leaf.last_char_index = leaf.last_char_index - right_leaf.last_char_index - 1;
+        let (left, right) = leaf.remove_char_at(context.index);
 
         let mut new_internal = Internal::new();
-        new_internal.weight = left_leaf.weight();
-        new_internal.branches[0] = Arc::new(Node::from(Leaf::from(left_leaf)));
-        new_internal.branches[1] = Arc::new(Node::from(Leaf::from(right_leaf)));
+        new_internal.weight = left.weight();
+        new_internal.branches[0] = Arc::new(Node::from(left));
+        new_internal.branches[1] = Arc::new(Node::from(right));
 
         NodeResult::NewNode(Node::from(new_internal))
     }

@@ -33,7 +33,9 @@ impl Cells {
     pub(crate) fn write_to(&self, writer: &mut BufWriter<&mut Stdout>) {
         for i in 0..self.x.len() {
             EscapeSequence::MoveCursor(self.x[i], self.y[i]).execute_buffered(writer);
-            writer.write(&[self.chars[i] as u8; 1]).unwrap();
+            let mut utf8_buffer = [0u8; 4];
+            self.chars[i].encode_utf8(&mut utf8_buffer);
+            writer.write(&utf8_buffer).unwrap();
         }
     }
 }

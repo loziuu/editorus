@@ -1,3 +1,5 @@
+use std::{io::BufRead, thread::current};
+
 use super::node::Weight;
 
 // We assume that one page is 4096 bytes long.
@@ -38,11 +40,52 @@ impl Leaf {
     pub fn get_char_bytes(&self) -> &[u8] {
         &self.val[..self.last_char_index]
     }
+
+    pub fn byte_position_of_char_at(&self, index: usize) -> usize {
+        if self.last_char_index == 0 {
+            return 0;
+        }
+
+        unsafe {
+            std::str::from_utf8_unchecked(&self.val[..self.last_char_index]).chars()
+                .take(index)
+                .map(|c| c.len_utf8())
+                .sum()
+        }
+    }
+
+    pub(crate) fn split_at_char(&mut self, index: usize) -> (Leaf, Leaf) {
+        let split_point = self.byte_position_of_char_at(index);
+        let mut current_leaf_val = std::mem::take(&mut self.val);
+
+        let (actual_data, _) = current_leaf_val.split_at_mut(self.last_char_index);
+
+        let (left, right) = actual_data.split_at(split_point);
+
+        (Leaf::from(left), Leaf::from(right))
+    }
+
+    // TODO: Now it's 2x O(n). Make it single pass.
+    // This splits the leaf, to: (Leaf(0,a), Leaf(b, last_char_index))
+    pub(crate) fn remove_char_at(&mut self, index: usize) -> (Leaf, Leaf) {
+        let a = self.byte_position_of_char_at(index);
+        let b = self.byte_position_of_char_at(index+1);
+
+        let mut current_leaf_val = std::mem::take(&mut self.val);
+        let (actual_data, _) = current_leaf_val.split_at_mut(self.last_char_index);
+        let (left, right) = actual_data.split_at(a);
+        let (_, right) = right.split_at(b-a);
+
+        (Leaf::from(left), Leaf::from(right))
+    }
 }
 
 impl Weight for Leaf {
     fn weight(&self) -> usize {
-        self.last_char_index
+        std::str::from_utf8(&self.val[..self.last_char_index])
+            .unwrap()
+            .chars()
+            .count()
     }
 }
 

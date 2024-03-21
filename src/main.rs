@@ -37,8 +37,25 @@ pub fn key_check() -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
+    setup_logger(); 
     run_terminal()
     //    key_check()
+}
+
+fn setup_logger() {
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}] {}",
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Info)
+        .chain(fern::log_file("output.log").unwrap())
+        .apply()
+        .unwrap();
 }
 
 pub fn run_terminal() -> std::io::Result<()> {

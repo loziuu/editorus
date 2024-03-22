@@ -1,9 +1,10 @@
+use crossterm::terminal;
 use log::info;
 
 use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
-    rope::rope::Rope,
+    rope::rope::Rope, writer::escapes::EscapeSequence,
 };
 use std::{
     fs::OpenOptions,
@@ -244,9 +245,9 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        //let mut stdout = std::io::stdout();
-        //EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
-        //terminal::disable_raw_mode().unwrap();
+        let mut stdout = std::io::stdout();
+        EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
+        terminal::disable_raw_mode().unwrap();
     }
 }
 

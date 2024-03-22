@@ -25,8 +25,7 @@ impl Node {
         }
     }
 
-    #[inline]
-    pub(crate) fn do_at<F>(&mut self, ctx: Context, f: F) -> NodeResult
+    pub(crate) fn add_at<F>(&mut self, mut ctx: Context, f: F) -> NodeResult
     where
         F: Fn(Context, &mut Leaf) -> NodeResult,
     {
@@ -46,11 +45,41 @@ impl Node {
                 if weight > ctx.index {
                     let left = &mut node.branches[0];
                     node.weight += ctx.buffer.len();
-                    Arc::make_mut(left).do_at(ctx, f)
+                    Arc::make_mut(left).add_at(ctx, f)
                 } else {
                     let right = &mut node.branches[1];
-                    let context = Context::new(ctx.index - weight, ctx.buffer);
-                    Arc::make_mut(right).do_at(context, f)
+                    ctx.index -= weight;
+                    Arc::make_mut(right).add_at(ctx, f)
+                }
+            }
+        }
+    }
+
+    pub(crate) fn remove_at<F>(&mut self, mut ctx: Context, f: F) -> NodeResult
+    where
+        F: Fn(Context, &mut Leaf) -> NodeResult,
+    {
+        match self {
+            Node::Leaf(node) => {
+                match f(ctx, node) {
+                    NodeResult::NewNode(new_node) => {
+                        // TODO: Should if actually be std::mem::swap?
+                        *self = new_node;
+                        NodeResult::EditedInPlace
+                    }
+                    NodeResult::EditedInPlace => NodeResult::EditedInPlace,
+                }
+            }
+            Node::Internal(node) => {
+                let weight = node.weight;
+                if weight > ctx.index {
+                    let left = &mut node.branches[0];
+                    node.weight -= 1; 
+                    Arc::make_mut(left).add_at(ctx, f)
+                } else {
+                    let right = &mut node.branches[1];
+                    ctx.index -= weight;
+                    Arc::make_mut(right).add_at(ctx, f)
                 }
             }
         }

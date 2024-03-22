@@ -1,7 +1,7 @@
 use crate::{editor::session::ERow, writer::escapes::EscapeSequence};
 use std::io::{BufWriter, Stdout, Write};
 
-struct Dimensions(u16, u16);
+struct Viewport(u16, u16);
 
 pub struct Cells {
     pub x: Vec<usize>,
@@ -42,26 +42,27 @@ impl Cells {
 
 // Add viewport
 pub struct Display {
-    dimensions: Dimensions,
+    viewport: Viewport,
     cells: Cells,
 }
 
 impl Display {
     pub fn with_dimensions(width: u16, height: u16) -> Self {
         Self {
-            dimensions: Dimensions(width, height),
+            viewport: Viewport(width, height),
             cells: Cells::new(width as usize * height as usize),
         }
     }
 
     pub fn height(&self) -> u16 {
-        self.dimensions.1
+        self.viewport.1
     }
 
     pub fn refresh(&mut self, data: &[ERow], display_options: DisplayOptions) {
-        self.cells = Cells::new(self.dimensions.0 as usize * self.dimensions.1 as usize);
+        self.cells = Cells::new(self.viewport.0 as usize * self.viewport.1 as usize);
 
         let offset_x = if display_options.show_line_numbers {
+            // Calculate this from total lines
             4
         } else {
             0
@@ -75,7 +76,7 @@ impl Display {
                 let row_number = (row + 1).to_string();
                 let mut chars = row_number.chars();
 
-                let whitespaces = 4-row_number.len();
+                let whitespaces = 4 - row_number.len();
                 for i in 1..whitespaces {
                     self.cells.x[idx] = i;
                     self.cells.y[idx] = row + 1;
@@ -93,9 +94,6 @@ impl Display {
 
             // Iterate over chars?
             for (col, c) in rd.chars().enumerate() {
-                if col == self.dimensions.0 as usize - 1 {
-                    break;
-                }
                 self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = row + 1;
                 self.cells.chars[idx] = c;

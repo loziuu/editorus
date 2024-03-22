@@ -56,7 +56,7 @@ impl Rope {
             panic!("Index out of bounds");
         }
         let context = Context::new(index, arg);
-        node.do_at(context, insert);
+        node.add_at(context, insert);
         self.len += arg.chars().count();
     }
 
@@ -73,12 +73,14 @@ impl Rope {
             // Do nothing
             return;
         }
+
         if index > self.len() {
             panic!("Index out of bounds");
         }
+
         let node = Arc::make_mut(&mut self.root);
         let context = Context::new(index, "");
-        node.do_at(context, remove_at);
+        node.remove_at(context, remove_at);
         self.len -= 1;
     }
 
@@ -103,10 +105,7 @@ impl Rope {
         }
         let value = self.value();
 
-        let u_idx: usize = value.chars()
-            .take(index)
-            .map(|c| c.len_utf8())
-            .sum();
+        let u_idx: usize = value.chars().take(index).map(|c| c.len_utf8()).sum();
 
         let (left, right) = value.split_at(u_idx);
         (Rope::from(left), Rope::from(right))
@@ -351,7 +350,7 @@ mod tests {
 
         rope.append(", Worlduśś!");
 
-        assert_eq!("Hello, Worlduśś!", rope.value()); 
+        assert_eq!("Hello, Worlduśś!", rope.value());
     }
 
     #[test]
@@ -411,7 +410,7 @@ mod tests {
     #[test]
     fn split_after_utf8() {
         let rope = Rope::from("Helloś World");
-        
+
         let (left, right) = rope.split_at(5);
 
         assert_eq!("Hello", left.value());
@@ -431,14 +430,42 @@ mod tests {
 
     #[test]
     fn concat_and_split() {
-        let mut a = Rope::from("asdfś");
-        let mut b = Rope::from("asdf");
-            
+        let a = Rope::from("asdfś");
+        let b = Rope::from("asdf");
+
         let c = a.concat(b);
         assert_eq!("asdfśasdf", c.value());
 
         let (left, right) = c.split_at(5);
         assert_eq!("asdfś", left.value());
         assert_eq!("asdf", right.value());
+    }
+
+    #[test]
+    fn rope_from_add_delete() {
+        let mut rope = Rope::from("Witam");
+
+        rope.insert(0, "N");
+        rope.insert(1, "c");
+        rope.insert(2, "c");
+
+        assert_eq!("NccWitam", rope.value());
+
+        rope.remove_at(0);
+        rope.remove_at(0);
+        rope.remove_at(0);
+
+        assert_eq!("Witam", rope.value());
+    }
+
+    #[test]
+    fn preprend() {
+        let mut rope = Rope::from("Witam");
+
+        rope.insert(0, "N");
+        rope.insert(1, "c");
+        rope.insert(2, "c");
+
+        assert_eq!("NccWitam", rope.value());
     }
 }

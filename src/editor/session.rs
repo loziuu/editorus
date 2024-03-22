@@ -4,7 +4,8 @@ use log::info;
 use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
-    rope::rope::Rope, writer::escapes::EscapeSequence,
+    rope::rope::Rope,
+    writer::escapes::EscapeSequence,
 };
 use std::{
     fs::OpenOptions,
@@ -152,8 +153,8 @@ impl Session {
     }
 
     pub fn mark_dirty(&mut self) {
-        self.rebuild_display();
         self.dirty = true;
+        self.rebuild_display();
     }
 
     fn rebuild_display(&mut self) {
@@ -199,15 +200,17 @@ impl Session {
     pub fn new_line(&mut self) {
         let current_row = &self.data[self.cursor.y - 1];
 
-        info!("X at: {}, Current row len: {}", self.cursor.x_relative(), current_row.data.len());
+        info!(
+            "X at: {}, Current row len: {}",
+            self.cursor.x_relative(),
+            current_row.data.len()
+        );
         if self.cursor.x_relative() != current_row.data.len() {
-            info!("Splitting row");
             let row = &mut self.data[self.cursor.y - 1];
             let (curr, next) = row.data.split_at(self.cursor.x_relative());
             row.data = curr;
             self.data.insert(self.cursor.y, ERow::new(next));
         } else {
-            info!("Inserting new empty line");
             self.data.insert(self.cursor.y, ERow::empty());
         }
 
@@ -215,6 +218,20 @@ impl Session {
         self.cursor.move_to_line_beginning();
 
         self.mark_dirty();
+    }
+
+    pub fn delete(&mut self) {
+        if self.is_cursor_at_the_end_of_line() {
+            todo!()
+        } else {
+            let row = &mut self.data[self.cursor.y_relative()];
+            row.data.remove_at(self.cursor.x_relative());
+        }
+        self.mark_dirty();
+    }
+
+    fn is_cursor_at_the_end_of_line(&self) -> bool {
+        self.cursor.x_relative() == self.data[self.cursor.y - 1].data.len()
     }
 
     pub(crate) fn display_on(&mut self, stdout: &mut Stdout) -> std::io::Result<()> {
@@ -244,22 +261,20 @@ impl Session {
 }
 
 impl Drop for Session {
-    fn drop(&mut self) {
-        let mut stdout = std::io::stdout();
-        EscapeSequence::ClearScreen.execute(&mut stdout).unwrap();
-        terminal::disable_raw_mode().unwrap();
-    }
+    fn drop(&mut self) {}
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
 
     #[test]
     fn weird_stuff() {
         let config = crate::editor::config::Configuration {
             show_line_numbers: true,
         };
-        let mut session = super::Session::with_config(50, 50, config);
+        let mut session = Session::with_config(50, 50, config);
 
         session.insert(b"a");
         session.insert(b"s");
@@ -285,5 +300,37 @@ mod tests {
 
         assert_eq!(session.data[0].data.value(), "asdfś");
         assert_eq!(session.data[1].data.value(), "qwer");
+    }
+
+    #[test]
+    fn load_file() {
+        let mut session = Session::new(50, 50);
+        session.open_file("witam.txt".to_string()).unwrap();
+
+        assert_eq!(session.data[0].data.value(), "Witam");
+    }
+
+    #[test]
+    fn load_file_add_letters_delete() {
+        let config = crate::editor::config::Configuration {
+            show_line_numbers: true,
+        };
+        let mut session = Session::with_config(50, 50, config);
+        session.open_file("witam.txt".to_string()).unwrap();
+
+        assert_eq!(session.data[0].data.value(), "Witam");
+
+        session.insert(b"N");
+        session.insert(b"c");
+        session.insert(b"c");
+
+        session.cursor_left();
+        session.cursor_left();
+        session.cursor_left();
+        session.delete();
+        session.delete();
+        session.delete();
+
+        assert_eq!(session.data[0].data.value(), "Witam");
     }
 }

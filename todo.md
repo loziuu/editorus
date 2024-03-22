@@ -8,6 +8,12 @@
 [x] Use anything else other than vector ugh...
 [x] Separate display from data buffer (Rope)
 [x] New line on > 1 byte character does not work
+[] Viewport
+[] Move viewport on cursor move right
+[] Move viewport on cursor move left
+[] Line wrapping
+[] Handle delete key
+
 [] Command for edit mode
 [] "Dirty" on ERow level, (is this even still relevant?)
 [] Handle unicode (<- it's on rope level i guess?)
@@ -27,6 +33,7 @@
 [] Add tests?
 [] Handle args
 [] Add delete key handler
+[] Line numbers width should be dynamic (based on number of lines)
 
 # Known issues
 -- To many to list :( 

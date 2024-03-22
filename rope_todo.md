@@ -6,6 +6,7 @@
 [] remove from to
 [] rebalance (better rebalance?)
 [] Better split
+[] Create rope from byte stream?
 
 [] Split is somewhat broken
 [x] Remove is broken after UTF-8

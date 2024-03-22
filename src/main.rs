@@ -1,5 +1,6 @@
 use crossterm::terminal;
 use editorus::editor::config::Configuration;
+use log::info;
 use std::io::{stdin, Read};
 
 use editorus::writer;
@@ -29,7 +30,7 @@ pub fn key_check() -> std::io::Result<()> {
     terminal::enable_raw_mode()?;
 
     loop {
-        let mut buf: [u8; 3] = [0; 3];
+        let mut buf: [u8; 4] = [0; 4];
         if let Ok(_) = stdin.read(&mut buf) {
             println!("{:?}", buf);
         }
@@ -79,7 +80,7 @@ pub fn run_terminal() -> std::io::Result<()> {
 
     loop {
         writer::write(&mut session)?;
-        let mut buf: [u8; 3] = [0; 3];
+        let mut buf: [u8; 4] = [0; 4];
         if let Ok(size) = stdin.read(&mut buf) {
             if buf[0] == 13 {
                 session.new_line();
@@ -115,6 +116,9 @@ pub fn run_terminal() -> std::io::Result<()> {
 
                     if buf[1..size].bytes_eq("[D".as_bytes()) {
                         session.cursor_left();
+                    }
+                    if buf[1..size].bytes_eq("[3~".as_bytes()) {
+                        session.delete();
                     }
                 } else {
                     session.insert(&buf[..size]);

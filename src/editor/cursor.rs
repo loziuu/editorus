@@ -69,4 +69,8 @@ impl ECursor {
     fn get_x(&self) -> usize {
         self.x + self.offset.0
     }
+
+    pub(crate) fn y_relative(&self) -> usize {
+        self.y - 1
+    }
 }

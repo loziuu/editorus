@@ -1,6 +1,9 @@
 use std::{io::BufRead, thread::current};
 
-use super::node::Weight;
+use super::{
+    internal::Internal,
+    node::{Node, Weight},
+};
 
 // We assume that one page is 4096 bytes long.
 // Vec pointer + last_char_index + vec len + vec capacity
@@ -47,7 +50,8 @@ impl Leaf {
         }
 
         unsafe {
-            std::str::from_utf8_unchecked(&self.val[..self.last_char_index]).chars()
+            std::str::from_utf8_unchecked(&self.val[..self.last_char_index])
+                .chars()
                 .take(index)
                 .map(|c| c.len_utf8())
                 .sum()
@@ -69,23 +73,36 @@ impl Leaf {
     // This splits the leaf, to: (Leaf(0,a), Leaf(b, last_char_index))
     pub(crate) fn remove_char_at(&mut self, index: usize) -> (Leaf, Leaf) {
         let a = self.byte_position_of_char_at(index);
-        let b = self.byte_position_of_char_at(index+1);
+        let b = self.byte_position_of_char_at(index + 1);
 
         let mut current_leaf_val = std::mem::take(&mut self.val);
         let (actual_data, _) = current_leaf_val.split_at_mut(self.last_char_index);
         let (left, right) = actual_data.split_at(a);
-        let (_, right) = right.split_at(b-a);
+        let (_, right) = right.split_at(b - a);
 
         (Leaf::from(left), Leaf::from(right))
+    }
+
+    pub(crate) fn remove_char_at_node(&mut self, index: usize) -> Node {
+        println!("Removing char at: {}", index);
+        if index == 0 {
+            println!("Removing first char");
+            let idx = self.byte_position_of_char_at(1);
+            return Node::Leaf(Leaf::from(&self.val[idx..self.last_char_index]));
+        }
+        println!("Removing further.");
+        let (left, right) = self.remove_char_at(index);
+        Node::Internal(Internal::with_branches(Node::Leaf(left), Node::Leaf(right)))
     }
 }
 
 impl Weight for Leaf {
     fn weight(&self) -> usize {
-        std::str::from_utf8(&self.val[..self.last_char_index])
-            .unwrap()
-            .chars()
-            .count()
+        unsafe {
+            std::str::from_utf8_unchecked(self.get_char_bytes())
+                .chars()
+                .count()
+        }
     }
 }
 
@@ -114,5 +131,37 @@ impl From<&[u8]> for Leaf {
             val: vec,
             last_char_index: last_index,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::rope::node::Node;
+
+    use super::Leaf;
+
+    #[test]
+    fn test_leaf_from_str() {
+        let leaf = super::Leaf::from("Hello, world!");
+
+        assert_eq!("Hello, world!".to_string(), leaf_to_str(&leaf));
+        assert_eq!(leaf.last_char_index, 13);
+    }
+
+    #[test]
+    fn remove_at_first_char() {
+        let mut leaf = super::Leaf::from("Hello, world!");
+
+        let node = leaf.remove_char_at_node(0);
+
+        if let Node::Leaf(node) = node {
+            assert_eq!("ello, world!".to_string(), leaf_to_str(&node));
+        }
+    }
+
+    fn leaf_to_str(leaf: &Leaf) -> String {
+        std::str::from_utf8(&leaf.val[..leaf.last_char_index])
+            .unwrap()
+            .to_string()
     }
 }

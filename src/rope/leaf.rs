@@ -94,6 +94,20 @@ impl Leaf {
         let (left, right) = self.remove_char_at(index);
         Node::Internal(Internal::with_branches(Node::Leaf(left), Node::Leaf(right)))
     }
+
+    pub(crate) fn prepend(&mut self, buffer: &str) {
+        let mut new_node_val = [0; MAX_LEAF_LEN];
+
+        let val = buffer.as_bytes();
+        let start = val.len();
+        new_node_val[..start].copy_from_slice(val);
+
+        new_node_val[start..start + self.last_char_index]
+            .copy_from_slice(&self.val[..self.last_char_index]);
+
+        self.val = new_node_val.to_vec();
+        self.last_char_index += start;
+    }
 }
 
 impl Weight for Leaf {

@@ -1,11 +1,9 @@
-use crossterm::terminal;
 use log::info;
 
 use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
     rope::rope::Rope,
-    writer::escapes::EscapeSequence,
 };
 use std::{
     fs::OpenOptions,
@@ -222,7 +220,14 @@ impl Session {
 
     pub fn delete(&mut self) {
         if self.is_cursor_at_the_end_of_line() {
-            todo!()
+            if self.cursor.y == self.data.len() {
+                return;
+            }
+            let curr_line = self.data.remove(self.cursor.y_relative());
+            let next_line = self.data.remove(self.cursor().y_relative());
+
+            let new_line = curr_line.data.concat(next_line.data);
+            self.data.insert(self.cursor.y_relative(), ERow::new(new_line));
         } else {
             let row = &mut self.data[self.cursor.y_relative()];
             row.data.remove_at(self.cursor.x_relative());
@@ -267,7 +272,6 @@ impl Drop for Session {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn weird_stuff() {

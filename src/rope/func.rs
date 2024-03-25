@@ -71,14 +71,15 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
             return NodeResult::NewNode(Node::from(new_internal));
         }
 
-        println!("Appending to: {:?}", leaf.get_char_bytes());
         let val = context.buffer.as_bytes();
         let len = val.len();
         leaf.val[leaf.last_char_index..leaf.last_char_index + len].copy_from_slice(&val);
         leaf.last_char_index += len;
 
-        println!("Leaf: {:?}", leaf.get_char_bytes());
-
+        NodeResult::EditedInPlace
+    } else if context.index == 0 {
+        // PREPEND
+        leaf.prepend(context.buffer);
         NodeResult::EditedInPlace
     } else {
         if context.index > leaf.last_char_index {
@@ -95,13 +96,10 @@ pub(crate) fn insert(context: Context, leaf: &mut Leaf) -> NodeResult {
 
 // TODO: Check if we could even consume the leaf here?
 pub(crate) fn remove_at(context: Context, leaf: &mut Leaf) -> NodeResult {
-    println!("{:?}", leaf.get_char_bytes());
     if leaf.last_char_index == 0 {
-        println!("Skipping"); 
         // Do nothing, as there is nothing to remove.
         NodeResult::EditedInPlace
     } else if context.index == leaf.last_char_index {
-        println!("Let's see...");
         // We are at the end so just modify last char index
         // No so fast amigo!
         leaf.last_char_index -= 1;

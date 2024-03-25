@@ -445,21 +445,24 @@ mod tests {
     fn rope_from_add_delete() {
         let mut rope = Rope::from("Witam");
 
-        rope.insert(0, "N");
+        rope.insert(0, "c");
         rope.insert(1, "c");
         rope.insert(2, "c");
 
-        assert_eq!("NccWitam", rope.value());
+        assert_eq!("cccWitam", rope.value());
 
         rope.remove_at(0);
-        rope.remove_at(0);
-        rope.remove_at(0);
+        assert_eq!("ccWitam", rope.value());
 
+        rope.remove_at(0);
+        assert_eq!("cWitam", rope.value());
+
+        rope.remove_at(0);
         assert_eq!("Witam", rope.value());
     }
 
     #[test]
-    fn preprend() {
+    fn prepend() {
         let mut rope = Rope::from("Witam");
 
         rope.insert(0, "N");

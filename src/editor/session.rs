@@ -1,5 +1,3 @@
-use log::info;
-
 use super::{config::Configuration, cursor::ECursor};
 use crate::{
     display::display::{Display, Dump, WholeDump},
@@ -36,10 +34,7 @@ impl From<&str> for ERow {
     }
 }
 
-// Move cursor to display?
 pub struct Session {
-    // Can it be actually outside?
-    // Move to rope once confident
     data: Vec<ERow>,
     display: Display,
     cursor: ECursor,
@@ -60,6 +55,7 @@ impl Session {
     }
 
     pub fn with_config(width: u16, height: u16, config: Configuration) -> Self {
+        // Offset_X should be calculated based on line numbers
         let cursor_offset_x = if config.show_line_numbers { 4 } else { 0 };
 
         let session = Session {
@@ -111,6 +107,7 @@ impl Session {
     }
 
     pub fn cursor_down(&mut self) {
+        // Change viewport if possible
         if self.cursor.y != self.data.len() {
             self.cursor.down();
             if self.cursor.x > self.data[self.cursor.y - 1].len() {
@@ -120,6 +117,7 @@ impl Session {
     }
 
     pub fn cursor_left(&mut self) {
+        // Change viewport if possible
         if self.cursor.x == 1 {
             if self.cursor.y != 1 {
                 self.cursor.up();
@@ -159,26 +157,19 @@ impl Session {
         self.display.refresh(&self.data, Default::default());
     }
 
-    // TODO: Refactor maybe to use some commands?
-    // TODO: Make it work at the end of the line
     pub fn insert(&mut self, data: &[u8]) {
         let row = &mut self.data[self.cursor.y - 1];
         let data = std::str::from_utf8(data).unwrap();
-
         row.data.insert(self.cursor.x_relative(), data);
-
         self.cursor.right();
-
         self.mark_dirty();
     }
 
-    // TODO: Refactor maybe to use some commands?
     pub fn backspace(&mut self) {
         if self.cursor.x == 1 && self.cursor.y == 1 {
             return;
         }
         if self.cursor.at_start() {
-            // We need to concat ropes
             let prev_row = self.data.remove(self.cursor.y - 2);
             let curr_row = self.data.remove(self.cursor.y - 2);
             let x_final_position = prev_row.len();
@@ -194,15 +185,8 @@ impl Session {
         self.mark_dirty();
     }
 
-    // This should actually change data, but rather display... right?
     pub fn new_line(&mut self) {
         let current_row = &self.data[self.cursor.y - 1];
-
-        info!(
-            "X at: {}, Current row len: {}",
-            self.cursor.x_relative(),
-            current_row.data.len()
-        );
         if self.cursor.x_relative() != current_row.data.len() {
             let row = &mut self.data[self.cursor.y - 1];
             let (curr, next) = row.data.split_at(self.cursor.x_relative());

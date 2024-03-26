@@ -10,28 +10,6 @@ pub enum EscapeSequence {
 }
 
 impl EscapeSequence {
-    pub fn execute_buffered(self, stdout: &mut BufWriter<&mut Stdout>) {
-        stdout.write(&[27]).unwrap();
-        match self {
-            EscapeSequence::MoveCursor(x, y) => {
-                let sequence = format!("[{};{}H", y, x); // TODO: Can we do it without String?
-                stdout.write(sequence.as_bytes()).unwrap();
-            }
-            EscapeSequence::NewLine => {
-                stdout.write("[1E".as_bytes()).unwrap();
-            }
-            EscapeSequence::ClearScreen => {
-                stdout.write("[2J".as_bytes()).unwrap();
-            }
-            EscapeSequence::HideCursor => {
-                stdout.write("[?25l".as_bytes()).unwrap();
-            }
-            EscapeSequence::ShowCursor => {
-                stdout.write("[?25h".as_bytes()).unwrap();
-            }
-        }
-    }
-
     pub fn execute(self, stdout: &mut Stdout) -> Result<(), std::io::Error> {
         stdout.write(&[27])?;
         match self {

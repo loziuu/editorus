@@ -1,5 +1,5 @@
 use crate::{editor::session::ERow, writer::escapes::EscapeSequence};
-use std::io::{BufWriter, Stdout, Write};
+use std::io::{Stdout, Write};
 
 struct Viewport(u16, u16);
 
@@ -11,6 +11,7 @@ pub struct Cells {
 
 pub struct DisplayOptions {
     show_line_numbers: bool,
+    // view_offset?
 }
 
 impl Default for DisplayOptions {
@@ -30,10 +31,12 @@ impl Cells {
         }
     }
 
-    pub(crate) fn write_to(&self, writer: &mut BufWriter<&mut Stdout>) {
+    pub(crate) fn write_to(&self, writer: &mut Stdout) {
+        // TODO: This might be moved into loop.
+        let mut utf8_buffer = [0u8; 4];
         for i in 0..self.x.len() {
-            EscapeSequence::MoveCursor(self.x[i], self.y[i]).execute_buffered(writer);
-            let mut utf8_buffer = [0u8; 4];
+            EscapeSequence::MoveCursor(self.x[i], self.y[i]).execute(writer)
+                .unwrap();
             self.chars[i].encode_utf8(&mut utf8_buffer);
             writer.write(&utf8_buffer).unwrap();
         }
@@ -58,17 +61,19 @@ impl Display {
         self.viewport.1
     }
 
+    // Refresh the display buffer
     pub fn refresh(&mut self, data: &[ERow], display_options: DisplayOptions) {
         self.cells = Cells::new(self.viewport.0 as usize * self.viewport.1 as usize);
 
         let offset_x = if display_options.show_line_numbers {
-            // Calculate this from total lines
+            // TODO: Calculate this from total lines
             4
         } else {
             0
         };
 
         let mut idx = 0;
+        // TODO: Skip some lines if they are out of viewport
         for row in 0..data.len() {
             let rd = data[row].data.value();
 
@@ -76,7 +81,7 @@ impl Display {
                 let row_number = (row + 1).to_string();
                 let mut chars = row_number.chars();
 
-                let whitespaces = 4 - row_number.len();
+                let whitespaces = offset_x - row_number.len();
                 for i in 1..whitespaces {
                     self.cells.x[idx] = i;
                     self.cells.y[idx] = row + 1;
@@ -84,7 +89,7 @@ impl Display {
                     idx += 1
                 }
 
-                for i in whitespaces..=3 {
+                for i in whitespaces..=offset_x-1 {
                     self.cells.x[idx] = i;
                     self.cells.y[idx] = row + 1;
                     self.cells.chars[idx] = chars.next().unwrap_or(' ');
@@ -92,7 +97,7 @@ impl Display {
                 }
             }
 
-            // Iterate over chars?
+            // TODO: Skip some chars if they are out of viewport
             for (col, c) in rd.chars().enumerate() {
                 self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = row + 1;
@@ -119,8 +124,7 @@ pub trait Dump {
 
 impl<'a> Dump for WholeDump<'a> {
     fn dump_to(&self, sink: &mut Stdout) {
-        let mut writer = BufWriter::with_capacity(65535, sink);
-        self.display.cells.write_to(&mut writer);
-        writer.flush().unwrap();
+        self.display.cells.write_to(sink);
+        sink.flush().unwrap();
     }
 }

@@ -96,24 +96,39 @@ impl Session {
     }
 
     pub fn cursor_up(&mut self) {
-        self.cursor.up();
-        if self.cursor.x > self.data[self.cursor.y - 1].len() {
-            self.cursor.x = self.data[self.cursor.y - 1].len();
-        }
+        if self.cursor.y == 1 && self.cursor.offset.1 > 0 && self.display.viewport.offset_y() > 0 {
+            self.cursor.offset.1 -= 1;
+            self.display.viewport.offset_y -= 1;
+            self.mark_dirty();
+        } else {
+            self.cursor.up();
 
-        if self.cursor.x == 0 {
-            self.cursor.x = 1;
+            if self.cursor.x > self.data[self.cursor.y - 1].len() {
+                self.cursor.x = self.data[self.cursor.y - 1].len();
+            }
+
+            if self.cursor.x == 0 {
+                self.cursor.x = 1;
+            }
         }
     }
 
     pub fn cursor_down(&mut self) {
         // Change viewport if possible
-        if self.cursor.y != self.data.len() {
-            self.cursor.down();
-            if self.cursor.x > self.data[self.cursor.y - 1].len() {
-                self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
+        if self.cursor.y + self.display.viewport.offset_y() != self.data.len() {
+            if self.cursor.y == self.display.height() as usize {
+                // CAN WE GROUP IT SOMEHOW?
+                self.display.viewport.offset_y += 1;
+                self.cursor.offset.1 += 1;
+                self.mark_dirty();
+            } else {
+                self.cursor.down();
+                if self.cursor.x > self.data[self.cursor.y - 1].len() {
+                    self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
+                }
             }
         }
+        log::info!("{:?}", self.cursor);
     }
 
     pub fn cursor_left(&mut self) {
@@ -158,7 +173,7 @@ impl Session {
     }
 
     pub fn insert(&mut self, data: &[u8]) {
-        let row = &mut self.data[self.cursor.y - 1];
+        let row = &mut self.data[self.cursor.y_relative()];
         let data = std::str::from_utf8(data).unwrap();
         row.data.insert(self.cursor.x_relative(), data);
         self.cursor.right();
@@ -170,16 +185,16 @@ impl Session {
             return;
         }
         if self.cursor.at_start() {
-            let prev_row = self.data.remove(self.cursor.y - 2);
-            let curr_row = self.data.remove(self.cursor.y - 2);
+            let prev_row = self.data.remove(self.cursor.y_relative() - 1);
+            let curr_row = self.data.remove(self.cursor.y_relative() - 1); 
             let x_final_position = prev_row.len();
             let concat = prev_row.data.concat(curr_row.data);
-            self.data.insert(self.cursor.y - 2, ERow::new(concat));
+            self.data.insert(self.cursor.y_relative() - 1, ERow::new(concat));
             self.cursor.up();
             self.cursor.x = x_final_position + 1;
         } else {
             self.cursor.left();
-            let row = &mut self.data[self.cursor.y - 1];
+            let row = &mut self.data[self.cursor.y_relative()];
             row.data.remove_at(self.cursor.x_relative());
         }
         self.mark_dirty();
@@ -211,7 +226,8 @@ impl Session {
             let next_line = self.data.remove(self.cursor().y_relative());
 
             let new_line = curr_line.data.concat(next_line.data);
-            self.data.insert(self.cursor.y_relative(), ERow::new(new_line));
+            self.data
+                .insert(self.cursor.y_relative(), ERow::new(new_line));
         } else {
             let row = &mut self.data[self.cursor.y_relative()];
             row.data.remove_at(self.cursor.x_relative());

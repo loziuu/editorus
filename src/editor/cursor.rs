@@ -1,12 +1,12 @@
 // Add offset
 #[derive(Debug)]
-struct Offset(usize, usize);
+pub struct Offset(pub usize, pub usize);
 
 #[derive(Debug)]
 pub struct ECursor {
     pub x: usize,
     pub y: usize,
-    offset: Offset,
+    pub offset: Offset,
 }
 
 impl ECursor {
@@ -45,7 +45,7 @@ impl ECursor {
     }
 
     pub(crate) fn up(&mut self) {
-        if self.y != self.offset.1 + 1 {
+        if self.y > 1 {
             self.y -= 1;
         }
     }
@@ -71,6 +71,6 @@ impl ECursor {
     }
 
     pub(crate) fn y_relative(&self) -> usize {
-        self.y - 1
+        self.y - 1 + self.offset.1
     }
 }

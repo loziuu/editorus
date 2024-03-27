@@ -1,3 +1,5 @@
+use crate::display::display::Viewport;
+
 // Add offset
 #[derive(Debug)]
 pub struct Offset(pub usize, pub usize);
@@ -51,7 +53,7 @@ impl ECursor {
     }
 
     pub(crate) fn at_start(&self) -> bool {
-        self.x == 1 && self.y != 1 
+        self.x == 1 && self.y != 1
     }
 
     pub(crate) fn move_to_line_beginning(&mut self) {
@@ -64,6 +66,10 @@ impl ECursor {
 
     pub(crate) fn x_relative(&self) -> usize {
         self.x - 1
+    }
+
+    pub(crate) fn x_relative_to_viewport(&self, viewport: &Viewport) -> usize {
+        self.x_relative() + viewport.offset_x as usize
     }
 
     fn get_x(&self) -> usize {

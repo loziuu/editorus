@@ -144,12 +144,18 @@ impl Session {
 
     pub fn cursor_right(&mut self) {
         if self.cursor.x <= self.data[self.cursor.y - 1].len() {
-            self.cursor.right();
+            if self.cursor.x + self.cursor.offset.0 == self.display.width() as usize {
+                self.display.viewport.offset_x += 1;
+                self.mark_dirty();
+            } else {
+                self.cursor.right();
+            }
         } else {
             // Refactor so cursor_down() return result.
             let curr_row = self.cursor.y;
             self.cursor_down();
             if self.cursor.y != curr_row {
+                self.display.viewport.offset_x = 0;
                 self.cursor.move_to_line_beginning();
             }
         }
@@ -175,7 +181,7 @@ impl Session {
     pub fn insert(&mut self, data: &[u8]) {
         let row = &mut self.data[self.cursor.y_relative()];
         let data = std::str::from_utf8(data).unwrap();
-        row.data.insert(self.cursor.x_relative(), data);
+        row.data.insert(self.cursor.x_relative_to_viewport(self.display.viewport()), data);
         self.cursor.right();
         self.mark_dirty();
     }
@@ -186,25 +192,28 @@ impl Session {
         }
         if self.cursor.at_start() {
             let prev_row = self.data.remove(self.cursor.y_relative() - 1);
-            let curr_row = self.data.remove(self.cursor.y_relative() - 1); 
+            let curr_row = self.data.remove(self.cursor.y_relative() - 1);
             let x_final_position = prev_row.len();
             let concat = prev_row.data.concat(curr_row.data);
-            self.data.insert(self.cursor.y_relative() - 1, ERow::new(concat));
+            self.data
+                .insert(self.cursor.y_relative() - 1, ERow::new(concat));
             self.cursor.up();
             self.cursor.x = x_final_position + 1;
         } else {
             self.cursor.left();
             let row = &mut self.data[self.cursor.y_relative()];
-            row.data.remove_at(self.cursor.x_relative());
+            row.data.remove_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
         }
         self.mark_dirty();
     }
 
     pub fn new_line(&mut self) {
-        let current_row = &self.data[self.cursor.y - 1];
-        if self.cursor.x_relative() != current_row.data.len() {
-            let row = &mut self.data[self.cursor.y - 1];
-            let (curr, next) = row.data.split_at(self.cursor.x_relative());
+        let current_row = &self.data[self.cursor.y_relative()];
+        if self.cursor.x_relative_to_viewport(self.display.viewport()) != current_row.data.len() {
+            let row = &mut self.data[self.cursor.y_relative()];
+            let (curr, next) = row
+                .data
+                .split_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
             row.data = curr;
             self.data.insert(self.cursor.y, ERow::new(next));
         } else {
@@ -213,6 +222,7 @@ impl Session {
 
         self.cursor.down();
         self.cursor.move_to_line_beginning();
+        self.display.viewport.offset_x = 0;
 
         self.mark_dirty();
     }
@@ -230,13 +240,13 @@ impl Session {
                 .insert(self.cursor.y_relative(), ERow::new(new_line));
         } else {
             let row = &mut self.data[self.cursor.y_relative()];
-            row.data.remove_at(self.cursor.x_relative());
+            row.data.remove_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
         }
         self.mark_dirty();
     }
 
     fn is_cursor_at_the_end_of_line(&self) -> bool {
-        self.cursor.x_relative() == self.data[self.cursor.y - 1].data.len()
+        self.cursor.x_relative_to_viewport(self.display.viewport()) == self.data[self.cursor.y - 1].data.len()
     }
 
     pub(crate) fn display_on(&mut self, stdout: &mut Stdout) -> std::io::Result<()> {

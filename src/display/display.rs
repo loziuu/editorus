@@ -17,6 +17,10 @@ impl Viewport {
     pub fn offset_y(&self) -> usize {
         self.offset_y as usize
     }
+
+    pub fn offset_x(&self) -> usize {
+        self.offset_x as usize
+    }
 }
 
 pub struct Cells {
@@ -90,8 +94,6 @@ impl Display {
         };
 
         let mut idx = 0;
-        // TODO: Skip some lines if they are out of viewport
-        log::info!("Data length: {:?}", self.viewport);
         let max_lines = data.len().min(self.viewport.height as usize);
         let start_line = self.viewport.offset_y as usize;
         for row in start_line..start_line + max_lines {
@@ -120,13 +122,22 @@ impl Display {
             }
 
             // TODO: Skip some chars if they are out of viewport
-            for (col, c) in rd.chars().enumerate() {
+            let start_col = self.viewport.offset_x as usize;
+            for (col, c) in rd.chars().skip(start_col).enumerate() {
                 self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = display_row + 1;
                 self.cells.chars[idx] = c;
                 idx += 1;
             }
         }
+    }
+
+    pub(crate) fn width(&self) -> usize {
+        self.viewport.width as usize
+    }
+
+    pub fn viewport(&self) -> &Viewport {
+        &self.viewport
     }
 }
 

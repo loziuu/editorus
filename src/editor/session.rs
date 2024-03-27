@@ -103,8 +103,9 @@ impl Session {
         } else {
             self.cursor.up();
 
-            if self.cursor.x > self.data[self.cursor.y - 1].len() {
-                self.cursor.x = self.data[self.cursor.y - 1].len();
+            if self.cursor.x_relative_to_viewport(self.display.viewport()) > self.data[self.cursor.y_relative()].len() {
+                self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
+                self.display.viewport.offset_x = 
             }
 
             if self.cursor.x == 0 {
@@ -143,7 +144,8 @@ impl Session {
     }
 
     pub fn cursor_right(&mut self) {
-        if self.cursor.x <= self.data[self.cursor.y - 1].len() {
+        log::info!("Curr line len: {}", self.data[self.cursor.y - 1].len());
+        if self.cursor.x_relative_to_viewport(self.display.viewport()) < self.data[self.cursor().y_relative()].len() {
             if self.cursor.x + self.cursor.offset.0 == self.display.width() as usize {
                 self.display.viewport.offset_x += 1;
                 self.mark_dirty();

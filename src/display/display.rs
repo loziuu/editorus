@@ -99,6 +99,8 @@ impl Display {
         for row in start_line..start_line + max_lines {
             let rd = data[row].data.value();
 
+            log::info!("Curr line value: [{}]", &rd);
+
             let display_row = row - start_line;
 
             if display_options.show_line_numbers {
@@ -123,7 +125,9 @@ impl Display {
 
             // TODO: Skip some chars if they are out of viewport
             let start_col = self.viewport.offset_x as usize;
-            for (col, c) in rd.chars().skip(start_col).enumerate() {
+            for (col, c) in rd.chars().skip(start_col)
+                .take(self.viewport.width as usize - offset_x)
+                .enumerate() {
                 self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = display_row + 1;
                 self.cells.chars[idx] = c;

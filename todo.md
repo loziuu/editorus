@@ -69,3 +69,5 @@
 
 # Known issues
 -- Too many to list :( 
+
+[] Fix going up and down on non-zero offset-x of vieport

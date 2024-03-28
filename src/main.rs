@@ -1,6 +1,5 @@
 use crossterm::terminal;
 use editorus::editor::config::Configuration;
-use log::info;
 use std::io::{stdin, Read};
 
 use editorus::writer;
@@ -63,7 +62,7 @@ pub fn run_terminal() -> std::io::Result<()> {
     let config = parse_config()?;
 
     //let (w, h) = terminal::size().unwrap();
-    let (w,h) = (32,32);
+    let (w,h) = (50,20);
     let mut session = Session::with_config(w, h, config);
 
     let mut args = std::env::args();

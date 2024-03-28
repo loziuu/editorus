@@ -1,12 +1,26 @@
-use crate::{editor::session::ERow, writer::escapes::EscapeSequence};
+use crate::{editor::{cursor::ECursor, session::ERow}, writer::escapes::EscapeSequence};
 use std::io::{Stdout, Write};
 
+// Viewport tell's use what part of the buffer we are currently viewing
 #[derive(Debug)]
 pub struct Viewport {
+    // Max width of the viewport
     width: u16,
+
+    // Max height of the viewport
     height: u16,
+
+    // How many characters we have scrolled to the right
     pub offset_x: u16,
+
+    // How many characters we have scrolled to the bottom
     pub offset_y: u16,
+}
+
+#[derive(Debug)]
+pub struct Point {
+    pub x: usize,
+    pub y: usize,
 }
 
 impl Viewport {
@@ -31,7 +45,6 @@ pub struct Cells {
 
 pub struct DisplayOptions {
     show_line_numbers: bool,
-    // view_offset?
 }
 
 impl Default for DisplayOptions {
@@ -98,9 +111,6 @@ impl Display {
         let start_line = self.viewport.offset_y as usize;
         for row in start_line..start_line + max_lines {
             let rd = data[row].data.value();
-
-            log::info!("Curr line value: [{}]", &rd);
-
             let display_row = row - start_line;
 
             if display_options.show_line_numbers {
@@ -142,6 +152,12 @@ impl Display {
 
     pub fn viewport(&self) -> &Viewport {
         &self.viewport
+    }
+
+    pub fn point_at(&self, cursor: &ECursor) -> Point {
+        let x = cursor.x_relative_to_viewport(&self.viewport);
+        let y = cursor.y_relative_to_viewport(&self.viewport);
+        Point { x, y }
     }
 }
 

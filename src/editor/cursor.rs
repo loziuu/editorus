@@ -72,11 +72,15 @@ impl ECursor {
         self.x_relative() + viewport.offset_x as usize
     }
 
+    pub(crate) fn y_relative_to_viewport(&self, viewport: &Viewport) -> usize {
+        self.y_relative() + viewport.offset_y as usize
+    }
+
     fn get_x(&self) -> usize {
         self.x + self.offset.0
     }
 
     pub(crate) fn y_relative(&self) -> usize {
-        self.y - 1 + self.offset.1
+        self.y - 1
     }
 }

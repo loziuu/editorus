@@ -103,9 +103,13 @@ impl Session {
         } else {
             self.cursor.up();
 
-            if self.cursor.x_relative_to_viewport(self.display.viewport()) > self.data[self.cursor.y_relative()].len() {
-                self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
-                self.display.viewport.offset_x = 
+            let point = self.display.point_at(&self.cursor);
+
+            if point.x > self.data[point.y].len() {
+                if self.display.viewport.offset_x > 0 {
+                    // Fit to screen?
+                    self.fit_to_screen();
+                }
             }
 
             if self.cursor.x == 0 {
@@ -114,38 +118,62 @@ impl Session {
         }
     }
 
+    fn fit_to_screen(&mut self) {
+        let point = self.display.point_at(&self.cursor);
+        let row = &self.data[point.y];
+        let max_number_of_chars = self.display.width() as usize - self.cursor.offset.0;
+        if row.len() > max_number_of_chars {
+            let offset = (row.len() - max_number_of_chars) as u16 + 1;
+            self.display.viewport.offset_x = offset;
+            self.cursor.x = max_number_of_chars;
+        } else {
+            self.cursor.x = row.len() + 1;
+            self.display.viewport.offset_x = 0;
+        }
+        self.mark_dirty();
+    }
+
     pub fn cursor_down(&mut self) {
         // Change viewport if possible
-        if self.cursor.y + self.display.viewport.offset_y() != self.data.len() {
+        let point = self.display.point_at(&self.cursor);
+
+        if point.y != self.data.len() - 1 {
             if self.cursor.y == self.display.height() as usize {
-                // CAN WE GROUP IT SOMEHOW?
                 self.display.viewport.offset_y += 1;
-                self.cursor.offset.1 += 1;
                 self.mark_dirty();
             } else {
                 self.cursor.down();
-                if self.cursor.x > self.data[self.cursor.y - 1].len() {
-                    self.cursor.x = self.data[self.cursor.y - 1].len() + 1;
+                let new_point = self.display.point_at(&self.cursor);
+                if self.cursor.x > self.data[new_point.y].len() {
+                    self.cursor.x = self.data[new_point.y].len() + 1;
                 }
             }
         }
-        log::info!("{:?}", self.cursor);
     }
 
     pub fn cursor_left(&mut self) {
         // Change viewport if possible
         if self.cursor.x == 1 {
+            let point = self.display.point_at(&self.cursor);
+
+            if point.x != 0 {
+                self.display.viewport.offset_x -= 1;
+                self.mark_dirty();
+                return;
+            }
+
             if self.cursor.y != 1 {
                 self.cursor.up();
-                self.cursor.x = self.data[self.cursor.y - 1].len() + 2; // (cursor.x = 1) == data[0]
+                self.fit_to_screen();
             }
+        } else {
+            self.cursor.left();
         }
-        self.cursor.left();
     }
 
     pub fn cursor_right(&mut self) {
-        log::info!("Curr line len: {}", self.data[self.cursor.y - 1].len());
-        if self.cursor.x_relative_to_viewport(self.display.viewport()) < self.data[self.cursor().y_relative()].len() {
+        let point = self.display.point_at(&self.cursor);
+        if point.x < self.data[point.y].len() {
             if self.cursor.x + self.cursor.offset.0 == self.display.width() as usize {
                 self.display.viewport.offset_x += 1;
                 self.mark_dirty();
@@ -159,6 +187,7 @@ impl Session {
             if self.cursor.y != curr_row {
                 self.display.viewport.offset_x = 0;
                 self.cursor.move_to_line_beginning();
+                self.mark_dirty();
             }
         }
     }
@@ -181,48 +210,48 @@ impl Session {
     }
 
     pub fn insert(&mut self, data: &[u8]) {
-        let row = &mut self.data[self.cursor.y_relative()];
+        let point = self.display.point_at(&self.cursor);
+        let row = &mut self.data[point.y];
         let data = std::str::from_utf8(data).unwrap();
-        row.data.insert(self.cursor.x_relative_to_viewport(self.display.viewport()), data);
-        self.cursor.right();
+        row.data.insert(point.x, data);
+        self.cursor_right();
         self.mark_dirty();
     }
 
     pub fn backspace(&mut self) {
+        let point = self.display.point_at(&self.cursor);
         if self.cursor.x == 1 && self.cursor.y == 1 {
             return;
         }
         if self.cursor.at_start() {
-            let prev_row = self.data.remove(self.cursor.y_relative() - 1);
-            let curr_row = self.data.remove(self.cursor.y_relative() - 1);
+            let prev_row = self.data.remove(point.y - 1);
+            let curr_row = self.data.remove(point.y - 1);
             let x_final_position = prev_row.len();
             let concat = prev_row.data.concat(curr_row.data);
-            self.data
-                .insert(self.cursor.y_relative() - 1, ERow::new(concat));
+            self.data.insert(point.y - 1, ERow::new(concat));
             self.cursor.up();
             self.cursor.x = x_final_position + 1;
         } else {
             self.cursor.left();
-            let row = &mut self.data[self.cursor.y_relative()];
-            row.data.remove_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
+            let row = &mut self.data[point.y];
+            row.data.remove_at(point.x);
         }
         self.mark_dirty();
     }
 
     pub fn new_line(&mut self) {
-        let current_row = &self.data[self.cursor.y_relative()];
-        if self.cursor.x_relative_to_viewport(self.display.viewport()) != current_row.data.len() {
-            let row = &mut self.data[self.cursor.y_relative()];
-            let (curr, next) = row
-                .data
-                .split_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
+        let point = self.display.point_at(&self.cursor);
+        let current_row = &self.data[point.y];
+        if point.x != current_row.data.len() {
+            let row = &mut self.data[point.y];
+            let (curr, next) = row.data.split_at(point.x);
             row.data = curr;
-            self.data.insert(self.cursor.y, ERow::new(next));
+            self.data.insert(point.y + 1, ERow::new(next));
         } else {
-            self.data.insert(self.cursor.y, ERow::empty());
+            self.data.insert(point.y, ERow::empty());
         }
 
-        self.cursor.down();
+        self.cursor_down();
         self.cursor.move_to_line_beginning();
         self.display.viewport.offset_x = 0;
 
@@ -230,25 +259,26 @@ impl Session {
     }
 
     pub fn delete(&mut self) {
+        let point = self.display.point_at(&self.cursor);
         if self.is_cursor_at_the_end_of_line() {
             if self.cursor.y == self.data.len() {
                 return;
             }
-            let curr_line = self.data.remove(self.cursor.y_relative());
-            let next_line = self.data.remove(self.cursor().y_relative());
+            let curr_line = self.data.remove(point.y);
+            let next_line = self.data.remove(point.y);
 
             let new_line = curr_line.data.concat(next_line.data);
-            self.data
-                .insert(self.cursor.y_relative(), ERow::new(new_line));
+            self.data.insert(point.y, ERow::new(new_line));
         } else {
-            let row = &mut self.data[self.cursor.y_relative()];
-            row.data.remove_at(self.cursor.x_relative_to_viewport(self.display.viewport()));
+            let row = &mut self.data[point.y];
+            row.data.remove_at(point.x);
         }
         self.mark_dirty();
     }
 
     fn is_cursor_at_the_end_of_line(&self) -> bool {
-        self.cursor.x_relative_to_viewport(self.display.viewport()) == self.data[self.cursor.y - 1].data.len()
+        self.cursor.x_relative_to_viewport(self.display.viewport())
+            == self.data[self.cursor.y - 1].data.len()
     }
 
     pub(crate) fn display_on(&mut self, stdout: &mut Stdout) -> std::io::Result<()> {

@@ -119,18 +119,23 @@ impl Session {
     }
 
     fn fit_to_screen(&mut self) {
+        let (max_number_of_chars, offset) = self.calculate_last_position();
+        self.display.viewport.offset_x = offset as u16;
+        self.cursor.x = max_number_of_chars;
+        self.mark_dirty();
+    }
+
+    // Returns (max_number_of_chars, offset)
+    fn calculate_last_position(&self) -> (usize, usize) {
         let point = self.display.point_at(&self.cursor);
         let row = &self.data[point.y];
         let max_number_of_chars = self.display.width() as usize - self.cursor.offset.0;
         if row.len() > max_number_of_chars {
             let offset = (row.len() - max_number_of_chars) as u16 + 1;
-            self.display.viewport.offset_x = offset;
-            self.cursor.x = max_number_of_chars;
+            (max_number_of_chars, offset as usize)
         } else {
-            self.cursor.x = row.len() + 1;
-            self.display.viewport.offset_x = 0;
+            (row.len(), 0)
         }
-        self.mark_dirty();
     }
 
     pub fn cursor_down(&mut self) {
@@ -224,17 +229,21 @@ impl Session {
             return;
         }
         if self.cursor.at_start() {
+            self.cursor.up();
+            let (chars, offset) = self.calculate_last_position();
             let prev_row = self.data.remove(point.y - 1);
             let curr_row = self.data.remove(point.y - 1);
-            let x_final_position = prev_row.len();
             let concat = prev_row.data.concat(curr_row.data);
             self.data.insert(point.y - 1, ERow::new(concat));
-            self.cursor.up();
-            self.cursor.x = x_final_position + 1;
+
+            self.cursor.x = chars+1;
+            self.display.viewport.offset_x = offset as u16;
+
+            self.mark_dirty();
         } else {
             self.cursor.left();
             let row = &mut self.data[point.y];
-            row.data.remove_at(point.x);
+            row.data.remove_at(point.x - 1);
         }
         self.mark_dirty();
     }

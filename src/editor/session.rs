@@ -242,7 +242,7 @@ impl Session {
     pub fn new_line(&mut self) {
         let point = self.display.point_at(&self.cursor);
         let current_row = &self.data[point.y];
-        if point.x != current_row.data.len() {
+        if point.x + 1 != current_row.data.len() {
             let row = &mut self.data[point.y];
             let (curr, next) = row.data.split_at(point.x);
             row.data = curr;

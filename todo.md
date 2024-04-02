@@ -15,8 +15,6 @@
 
 [x] Separate display from data buffer (Rope)
 
-[x] New line on > 1 byte character does not work
-
 [] Viewport
 
 [] Move viewport on cursor move right
@@ -70,4 +68,6 @@
 # Known issues
 -- Too many to list :( 
 
-[] Fix going up and down on non-zero offset-x of vieport
+[] Backspace doesn't work on first printed line
+
+[] Backspace is broken on first character, but only sometimes???

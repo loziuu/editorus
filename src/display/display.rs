@@ -109,7 +109,9 @@ impl Display {
         let mut idx = 0;
         let max_lines = data.len().min(self.viewport.height as usize);
         let start_line = self.viewport.offset_y as usize;
-        for row in start_line..start_line + max_lines {
+
+        let printable_lines = data.len().min(start_line + max_lines);
+        for row in start_line..printable_lines {
             let rd = data[row].data.value();
             let display_row = row - start_line;
 

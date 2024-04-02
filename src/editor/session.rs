@@ -96,22 +96,18 @@ impl Session {
     }
 
     pub fn cursor_up(&mut self) {
-        if self.cursor.y == 1 && self.cursor.offset.1 > 0 && self.display.viewport.offset_y() > 0 {
-            self.cursor.offset.1 -= 1;
+        log::info!("Moving cursor up. Cursor: {:?}", self.cursor);
+        if self.cursor.y == 1 && self.display.viewport.offset_y() > 0 {
+            log::info!("Should move viewport");
             self.display.viewport.offset_y -= 1;
             self.mark_dirty();
         } else {
             self.cursor.up();
 
             let point = self.display.point_at(&self.cursor);
-
             if point.x > self.data[point.y].len() {
-                if self.display.viewport.offset_x > 0 {
-                    // Fit to screen?
-                    self.fit_to_screen();
-                }
+                self.fit_to_screen();
             }
-
             if self.cursor.x == 0 {
                 self.cursor.x = 1;
             }
@@ -134,7 +130,7 @@ impl Session {
             let offset = (row.len() - max_number_of_chars) as u16 + 1;
             (max_number_of_chars, offset as usize)
         } else {
-            (row.len(), 0)
+            (row.len() + 1, 0)
         }
     }
 
@@ -149,8 +145,8 @@ impl Session {
             } else {
                 self.cursor.down();
                 let new_point = self.display.point_at(&self.cursor);
-                if self.cursor.x > self.data[new_point.y].len() {
-                    self.cursor.x = self.data[new_point.y].len() + 1;
+                if new_point.x > self.data[new_point.y].len() {
+                    self.fit_to_screen();
                 }
             }
         }
@@ -224,10 +220,10 @@ impl Session {
     }
 
     pub fn backspace(&mut self) {
-        let point = self.display.point_at(&self.cursor);
         if self.cursor.x == 1 && self.cursor.y == 1 {
             return;
         }
+        let point = self.display.point_at(&self.cursor);
         if self.cursor.at_start() {
             self.cursor.up();
             let (chars, offset) = self.calculate_last_position();
@@ -236,7 +232,8 @@ impl Session {
             let concat = prev_row.data.concat(curr_row.data);
             self.data.insert(point.y - 1, ERow::new(concat));
 
-            self.cursor.x = chars+1;
+            // Fit into screen????
+            self.cursor.x = chars;
             self.display.viewport.offset_x = offset as u16;
 
             self.mark_dirty();
@@ -251,13 +248,13 @@ impl Session {
     pub fn new_line(&mut self) {
         let point = self.display.point_at(&self.cursor);
         let current_row = &self.data[point.y];
-        if point.x + 1 != current_row.data.len() {
+        if point.x != current_row.data.len() {
             let row = &mut self.data[point.y];
             let (curr, next) = row.data.split_at(point.x);
             row.data = curr;
             self.data.insert(point.y + 1, ERow::new(next));
         } else {
-            self.data.insert(point.y, ERow::empty());
+            self.data.insert(point.y + 1, ERow::empty());
         }
 
         self.cursor_down();
@@ -326,10 +323,7 @@ mod tests {
 
     #[test]
     fn weird_stuff() {
-        let config = crate::editor::config::Configuration {
-            show_line_numbers: true,
-        };
-        let mut session = Session::with_config(50, 50, config);
+        let mut session = get_session(50, 50);
 
         session.insert(b"a");
         session.insert(b"s");
@@ -367,10 +361,7 @@ mod tests {
 
     #[test]
     fn load_file_add_letters_delete() {
-        let config = crate::editor::config::Configuration {
-            show_line_numbers: true,
-        };
-        let mut session = Session::with_config(50, 50, config);
+        let mut session = get_session(50, 50);
         session.open_file("witam.txt".to_string()).unwrap();
 
         assert_eq!(session.data[0].data.value(), "Witam");
@@ -387,5 +378,28 @@ mod tests {
         session.delete();
 
         assert_eq!(session.data[0].data.value(), "Witam");
+    }
+
+    #[test]
+    fn backspace_in_non_zero_y_offset_area() {
+        let mut session = get_session(5, 5);
+        session.open_file("witam.txt".to_string()).unwrap();
+
+        session.cursor_down();
+        session.new_line();
+        session.new_line();
+        session.new_line();
+        session.new_line();
+
+        session.backspace();
+
+        assert_eq!(session.rows().len(), 6);
+    }
+
+    fn get_session(w: u16, h: u16) -> Session {
+        let config = crate::editor::config::Configuration {
+            show_line_numbers: true,
+        };
+        Session::with_config(w, h, config)
     }
 }

@@ -1,4 +1,7 @@
-use crate::{editor::{cursor::ECursor, session::ERow}, writer::escapes::EscapeSequence};
+use crate::{
+    editor::{cursor::ECursor, session::ERow},
+    writer::escapes::EscapeSequence,
+};
 use std::io::{Stdout, Write};
 
 // Viewport tell's use what part of the buffer we are currently viewing
@@ -25,7 +28,12 @@ pub struct Point {
 
 impl Viewport {
     pub fn with_dimensions(width: u16, height: u16) -> Self {
-        Self { width, height, offset_x: 0, offset_y: 0 }
+        Self {
+            width,
+            height,
+            offset_x: 0,
+            offset_y: 0,
+        }
     }
 
     pub fn offset_y(&self) -> usize {
@@ -65,9 +73,9 @@ impl Cells {
     }
 
     pub(crate) fn write_to(&self, writer: &mut Stdout) {
-        // TODO: This might be moved into loop.
-        let mut utf8_buffer = [0u8; 4];
         for i in 0..self.x.len() {
+            // Move it out of the loop and zero after each iteration?
+            let mut utf8_buffer = [0u8; 4];
             EscapeSequence::MoveCursor(self.x[i], self.y[i])
                 .execute(writer)
                 .unwrap();
@@ -77,7 +85,6 @@ impl Cells {
     }
 }
 
-// Add viewport
 pub struct Display {
     pub viewport: Viewport,
     cells: Cells,
@@ -137,9 +144,12 @@ impl Display {
 
             // TODO: Skip some chars if they are out of viewport
             let start_col = self.viewport.offset_x as usize;
-            for (col, c) in rd.chars().skip(start_col)
+            for (col, c) in rd
+                .chars()
+                .skip(start_col)
                 .take(self.viewport.width as usize - offset_x)
-                .enumerate() {
+                .enumerate()
+            {
                 self.cells.x[idx] = offset_x + col + 1;
                 self.cells.y[idx] = display_row + 1;
                 self.cells.chars[idx] = c;

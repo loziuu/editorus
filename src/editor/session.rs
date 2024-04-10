@@ -45,7 +45,7 @@ pub struct Session {
 impl Session {
     pub fn new(width: u16, height: u16) -> Self {
         let session = Session {
-            data: vec![ERow::empty()], // It's time to move to rope :)
+            data: vec![ERow::empty()],
             display: Display::with_dimensions(width, height),
             cursor: ECursor::at_home(),
             dirty: true,
@@ -55,7 +55,7 @@ impl Session {
     }
 
     pub fn with_config(width: u16, height: u16, config: Configuration) -> Self {
-        // Offset_X should be calculated based on line numbers
+        // TODO: Offset_X should be calculated based on line numbers
         let cursor_offset_x = if config.show_line_numbers { 4 } else { 0 };
 
         let session = Session {
@@ -135,7 +135,6 @@ impl Session {
     }
 
     pub fn cursor_down(&mut self) {
-        // Change viewport if possible
         let point = self.display.point_at(&self.cursor);
 
         if point.y != self.data.len() - 1 {
@@ -153,7 +152,6 @@ impl Session {
     }
 
     pub fn cursor_left(&mut self) {
-        // Change viewport if possible
         if self.cursor.x == 1 {
             let point = self.display.point_at(&self.cursor);
 
@@ -177,17 +175,20 @@ impl Session {
         if point.x < self.data[point.y].len() {
             if self.cursor.x + self.cursor.offset.0 == self.display.width() as usize {
                 self.display.viewport.offset_x += 1;
+                self.cursor.move_to_line_beginning();
                 self.mark_dirty();
             } else {
                 self.cursor.right();
             }
         } else {
-            // Refactor so cursor_down() return result.
+            if point.y == self.data.len() - 1 {
+                return;
+            }
             let curr_row = self.cursor.y;
             self.cursor_down();
+            self.cursor.move_to_line_beginning();
             if self.cursor.y != curr_row {
                 self.display.viewport.offset_x = 0;
-                self.cursor.move_to_line_beginning();
                 self.mark_dirty();
             }
         }
@@ -220,12 +221,12 @@ impl Session {
     }
 
     pub fn backspace(&mut self) {
-        if self.cursor.x == 1 && self.cursor.y == 1 {
+        if self.cursor.x == 1 && self.cursor.y == 1 && self.display.viewport.offset_y() == 0 {
             return;
         }
         let point = self.display.point_at(&self.cursor);
         if self.cursor.at_start() {
-            self.cursor.up();
+            self.cursor_up();
             let (chars, offset) = self.calculate_last_position();
             let prev_row = self.data.remove(point.y - 1);
             let curr_row = self.data.remove(point.y - 1);
@@ -392,8 +393,45 @@ mod tests {
         session.new_line();
 
         session.backspace();
+        session.backspace();
+        session.backspace();
+        session.backspace();
+        session.backspace();
 
-        assert_eq!(session.rows().len(), 6);
+        assert_eq!(session.rows().len(), 1);
+    }
+
+    #[test]
+    fn backspace_in_non_zero_y_offset_area_move_up() {
+        let mut session = get_session(5, 5);
+        session.open_file("witam.txt".to_string()).unwrap();
+
+        session.cursor_down();
+        session.new_line();
+        session.new_line();
+        session.new_line();
+        session.new_line();
+    }
+
+    #[test]
+    fn delete_from_sequence_containing_utf_8() {
+        let mut session = get_session(50, 50);
+        session.open_file("witam.txt".to_string()).unwrap();
+
+        for _ in 0..5 {
+            session.cursor_right();
+            }
+
+        session.insert("ś".as_bytes());
+        for _ in 0..6 {
+            session.cursor_left();
+        }
+
+        for _ in 0..6 {
+            session.delete();
+        }
+
+        assert_eq!(session.data[0].data.value(), "");
     }
 
     fn get_session(w: u16, h: u16) -> Session {

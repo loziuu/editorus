@@ -221,7 +221,6 @@ mod tests {
 
         rope.append("Hello");
         rope.append(" World");
-        dbg!(&rope);
         rope.append("!");
 
         assert_eq!("Hello World!", rope.value());

@@ -53,7 +53,7 @@ impl ECursor {
     }
 
     pub(crate) fn at_start(&self) -> bool {
-        self.x == 1 && self.y != 1
+        self.x == 1 
     }
 
     pub(crate) fn move_to_line_beginning(&mut self) {

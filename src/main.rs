@@ -61,8 +61,8 @@ fn setup_logger() {
 pub fn run_terminal() -> std::io::Result<()> {
     let config = parse_config()?;
 
-    //let (w, h) = terminal::size().unwrap();
-    let (w,h) = (50,5);
+    let (w, h) = terminal::size().unwrap();
+    //let (w,h) = (50,5);
     let mut session = Session::with_config(w, h, config);
 
     let mut args = std::env::args();

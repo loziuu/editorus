@@ -15,23 +15,17 @@
 
 [x] Separate display from data buffer (Rope)
 
-[] Viewport
+[x] Viewport
 
-[] Move viewport on cursor move right
+[x] Handle delete key
 
-[] Move viewport on cursor move left
+[x] Handle backspace key
 
-[] Line wrapping
+[x] Handle utf-8
 
-[] Handle delete key
-
-[] Command for edit mode
+[x] Save file
 
 [] "Dirty" on ERow level, (is this even still relevant?)
-
-[] Handle unicode (<- it's on rope level i guess?)
-
-[] Save file
 
 [] Add command
 
@@ -53,21 +47,11 @@
 
 [] Viewports
 
-[] Log to files :)
-
-[] Refactor cursor.rs. Logic is in two places now dude... c'mon!
-
 [] Add tests?
 
 [] Handle args
 
-[] Add delete key handler
-
 [] Line numbers width should be dynamic (based on number of lines)
 
 # Known issues
--- Too many to list :( 
-
-[] Backspace doesn't work on first printed line
-
-[] Backspace is broken on first character, but only sometimes???
+[] Something brakes if I [delete] from line that contains utf-8 character

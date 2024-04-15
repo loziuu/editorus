@@ -315,7 +315,11 @@ impl Session {
 }
 
 impl Drop for Session {
-    fn drop(&mut self) {}
+    // TODO: This clears screen also during test. How can we fix this?
+    fn drop(&mut self) {
+        use crate::writer;
+        writer::close().unwrap();
+    }
 }
 
 #[cfg(test)]
@@ -420,7 +424,7 @@ mod tests {
 
         for _ in 0..5 {
             session.cursor_right();
-            }
+        }
 
         session.insert("ś".as_bytes());
         for _ in 0..6 {

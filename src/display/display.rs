@@ -117,10 +117,9 @@ impl Display {
         let max_lines = data.len().min(self.viewport.height as usize);
         let start_line = self.viewport.offset_y as usize;
 
-
         let printable_lines = data.len().min(start_line + max_lines);
         for row in start_line..printable_lines {
-            let rd = data[row].data.value();
+
             let display_row = row - start_line;
 
             if display_options.show_line_numbers {
@@ -143,10 +142,10 @@ impl Display {
                 }
             }
 
-            // TODO: Skip some chars if they are out of viewport
             let start_col = self.viewport.offset_x as usize;
-            for (col, c) in rd
-                .chars()
+            let rd_iter = data[row].data.leaf_iter();
+            let char_iter = rd_iter.map(|it| it.chars()).flatten();
+            for (col, c) in char_iter 
                 .skip(start_col)
                 .take(self.viewport.width as usize - offset_x)
                 .enumerate()

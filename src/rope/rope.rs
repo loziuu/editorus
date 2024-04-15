@@ -23,6 +23,10 @@ impl Rope {
         }
     }
 
+    pub fn leaf_iter(&self) -> LeafIterator {
+        LeafIterator::new(&self.root)
+    }
+
     fn with_root(node: Node, len: usize) -> Rope {
         Rope {
             len,
@@ -31,9 +35,10 @@ impl Rope {
     }
 
     // TODO: Do we really need to clone in this method?
+    // Don't clone!!!
     pub fn value(&self) -> String {
         LeafIterator::new(&self.root)
-            .map(|val| val.clone())
+            .map(|leaf| leaf.to_string())
             .collect()
     }
 
@@ -45,11 +50,6 @@ impl Rope {
         self.insert(self.len, arg)
     }
 
-    // TODO: Add max node len
-    // TODO: Use result
-    // BUG BUG BUG BUG BUG BUG
-    // BUG BUG BUG BUG BUG BUG
-    // TODO: THIS SHOULD ONLY INSERTS ON FIRST INDEX!!!!
     pub fn insert(&mut self, index: usize, arg: &str) {
         let node = Arc::make_mut(&mut self.root);
         if index > self.len {

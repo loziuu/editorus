@@ -1,8 +1,7 @@
 use super::{leaf::Leaf, node::Node};
 
-
 // TODO: Get it to not clone?
-pub(super) struct LeafIterator<'a> {
+pub struct LeafIterator<'a> {
     nodes: Vec<&'a Leaf>,
     index: usize,
 }
@@ -29,7 +28,7 @@ impl<'a> LeafIterator<'a> {
 }
 
 impl<'a> Iterator for LeafIterator<'a> {
-    type Item = String;
+    type Item = &'a str;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.index == self.nodes.len() {
@@ -38,7 +37,7 @@ impl<'a> Iterator for LeafIterator<'a> {
             let node = self.nodes[self.index];
             self.index += 1;
             let val = std::str::from_utf8(&node.get_char_bytes());
-            Some(val.unwrap().to_string())
+            Some(val.unwrap())
         }
     }
 }
